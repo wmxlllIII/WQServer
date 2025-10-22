@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.example.test.server.mapper.UserMapper">
+    <insert id="requestFriend">
+        insert into friend_relationships
+            (sender_id, receiver_id, status, valid_msg)
+        values (#{userId},
+                #{friendId},
+                'pending',
+                #{validMsg})
+    </insert>
+    <select id="existsPendingApply" resultType="boolean">
+        SELECT COUNT(*) > 0
+        FROM friend_relationships
+        WHERE sender_id = #{userId}
+            AND receiver_id = #{friendId}
+           or sender_id = #{friendId}
+            and receiver_id = #{userId}
+            AND status = 'pending'
+    </select>
+    <select id="getImagesByPostIds" parameterType="list" resultType="com.example.test.pojo.entity.PostImages">
+        SELECT *
+        FROM post_images
+        WHERE post_id IN
+        <foreach collection="postId" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        ORDER BY post_id, serial_num
+    </select>
+    <select id="getChildComments" resultType="com.example.test.pojo.entity.Comment">
+        SELECT *
+        FROM comments
+        WHERE parent_id IN
+        <foreach collection="parentIdList" item="pid" open="(" separator="," close=")">
+        #{pid}
+        </foreach>
+        ORDER BY create_at ASC
+    </select>
+
+    <update id="updateAvatar">
+        UPDATE users
+        SET avatar_url = #{avatarUrl}
+        WHERE uuid = #{userId}
+    </update>
+    <update id="requestSended">
+        UPDATE friend_relationships
+        SET status = 'sended'
+        WHERE sender_id = #{friendId}
+            AND receiver_id = #{userId}
+            AND status = 'pending'
+    </update>
+    <update id="updateStateAgree">
+            UPDATE friend_relationships
+            SET status = 'accepted'
+            WHERE sender_id = #{uuid}
+              AND receiver_id = #{currentId}
+              AND status = 'sended'
+
+    </update>
+    <update id="updateStateReject">
+        UPDATE friend_relationships
+        SET status = 'rejected'
+        WHERE sender_id = #{uuid}
+          AND receiver_id = #{currentId}
+          AND status = 'sended'
+    </update>
+    <update id="requestAllSended">
+        UPDATE friend_relationships
+        SET
+            status = 'sended'
+        WHERE
+            receiver_id = #{userId}
+          AND status = 'pending'
+    </update>
+</mapper>
