@@ -2,9 +2,11 @@ package com.example.test.common.utils;
 
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Date;
 
-public class FormatTimeUtil {
+public class TimeUtil {
     public static String formatTime(long longTime) {
         Date date = new Date(longTime);
         SimpleDateFormat time = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -17,7 +19,10 @@ public class FormatTimeUtil {
         return Long.parseLong(time.format(date));
     }
 
-    public static Timestamp formatTimestampTime(long currentTime) {
-        return new Timestamp(currentTime);
+    public static long dateTimeToMinute(LocalDateTime dateTime) {
+        return dateTime
+                .atZone(ZoneId.of("Asia/Shanghai"))
+                .toEpochSecond();
+
     }
 }

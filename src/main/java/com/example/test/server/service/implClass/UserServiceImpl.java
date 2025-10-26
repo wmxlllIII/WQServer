@@ -6,10 +6,7 @@ import com.example.test.common.context.BaseContext;
 import com.example.test.common.exception.*;
 import com.example.test.common.result.PageResult;
 import com.example.test.common.result.Result;
-import com.example.test.common.utils.BuildFriendInfoUtil;
-import com.example.test.common.utils.BuildMsg;
-import com.example.test.common.utils.BuildRelaUtil;
-import com.example.test.common.utils.VerifyUtil;
+import com.example.test.common.utils.*;
 import com.example.test.pojo.dto.*;
 import com.example.test.pojo.entity.*;
 import com.example.test.pojo.vo.*;
@@ -169,7 +166,7 @@ public class UserServiceImpl implements UserService {
         return user;
     }
 
-    private User loginByEmail(String email){
+    private User loginByEmail(String email) {
         User user = userMapper.getByEmail(email);
         if (user == null) {
             throw new UserNotFoundException(MessageConstant.PASSWORD_ERROR);
@@ -490,13 +487,14 @@ public class UserServiceImpl implements UserService {
     public PostsVO publishPost(PostsDTO postsDTO) {
         List<MultipartFile> imageList = postsDTO.getImages();
 
-        Post post = new Post();
+        Post needSavePost = new Post();
         String currentId = BaseContext.getCurrentId();
-        post.setUserId(currentId);
-        post.setContent(postsDTO.getContent());
-        post.setLikeCount(0);
+        needSavePost.setUserId(currentId);
+        needSavePost.setContent(postsDTO.getContent());
+        needSavePost.setLikeCount(0);
 
-        userMapper.savePost(post);
+        userMapper.savePost(needSavePost);
+        Post savedPost = userMapper.getPostById(needSavePost.getId());
 
         //保存图片
         List<String> postImageUrlList = new ArrayList<>();
@@ -512,7 +510,7 @@ public class UserServiceImpl implements UserService {
                     postImageUrlList.add(imageUrl);
                     PostImages postImages = new PostImages();
                     postImages.setImageUrl(imageUrl);
-                    postImages.setPostId(post.getId());
+                    postImages.setPostId(savedPost.getId());
                     postImages.setSerialNum(i + 1);
                     userMapper.savePostImages(postImages);
 
@@ -528,12 +526,12 @@ public class UserServiceImpl implements UserService {
         }
 
         return PostsVO.builder()
-                .postId(post.getId())
+                .postId(savedPost.getId())
                 .userId(currentId)
-                .content(post.getContent())
+                .content(savedPost.getContent())
                 .imageUrls(postImageUrlList)
                 .coverUrl(coverUrl)
-                .createAt(post.getCreateAt().getTime() / 1000)
+                .createAt(TimeUtil.dateTimeToMinute(savedPost.getCreateAt()))
                 .build();
     }
 
@@ -603,12 +601,12 @@ public class UserServiceImpl implements UserService {
                 .userAvatarUrl(user.getAvatarUrl())
                 .content(post.getContent())
                 .likeCount(post.getLikeCount())
-                .createAt(post.getCreateAt().getTime() / 1000);
+                .createAt(TimeUtil.dateTimeToMinute(post.getCreateAt()));
 
         List<String> imageUrlsList = Optional.ofNullable(imageMap.get(post.getId()))
                 .orElse(Collections.emptyList())
                 .stream()
-                .sorted(Comparator.comparingInt(PostImages::getSerialNum)) // 按序号排序
+                .sorted(Comparator.comparingInt(PostImages::getSerialNum))
                 .map(PostImages::getImageUrl)
                 .collect(Collectors.toList());
 

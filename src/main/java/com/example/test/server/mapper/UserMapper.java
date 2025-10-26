@@ -119,4 +119,7 @@ public interface UserMapper {
 
     @Select("select * from posts where user_id =#{user_id} order by create_at desc limit #{offset},#{limit}")
     List<Post> getMyPosts(@Param("user_id") String user_id,@Param("offset") int offset, @Param("limit") int limit);
+
+    @Select("select * from posts where posts.id = #{postId}")
+    Post getPostById(@Param("postId") int postId);
 }
