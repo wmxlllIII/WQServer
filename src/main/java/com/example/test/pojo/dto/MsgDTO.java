@@ -11,6 +11,8 @@ public class MsgDTO {
     @ApiModelProperty("接收方")
     private String targetEmail;
 
+    private int msgType;
+
     @ApiModelProperty("消息内容")
     private String msg;
 

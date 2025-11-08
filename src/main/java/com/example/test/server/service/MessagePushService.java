@@ -1,12 +1,13 @@
 package com.example.test.server.service;
 
+import com.example.test.common.enums.EventType;
+
 import java.util.Map;
 
 public interface MessagePushService {
 
-    void pushToUser(String userId, Map<String, Object> message);
+    <T> void pushToUser(String receiver_id, EventType eventType, T data);
 
-    void notifyPendingRequest(String sid);
+    <T> void pushToAll(EventType eventType, T data);
 
-    void notifyMSg(String sid);
 }
