@@ -15,8 +15,10 @@ import lombok.NoArgsConstructor;
 public class FriendInfoVO {
 
     @ApiModelProperty("昵称")
-    private String userName;
+    private String username;
 
+    @ApiModelProperty("userId")
+    private long uuNumber;
 
     @ApiModelProperty("头像")
     private String avatarUrl;

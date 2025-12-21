@@ -19,9 +19,6 @@ import java.math.BigInteger;
 public class RegisterVO implements Serializable {
 
 
-    @ApiModelProperty("用户ID")
-    private String userId;
-
     @ApiModelProperty("用户名")
     private String username;
 
@@ -29,7 +26,7 @@ public class RegisterVO implements Serializable {
     private String email;
 
     @ApiModelProperty("用户数字id")
-    private BigInteger uuNumber;
+    private long uuNumber;
 
     @ApiModelProperty("认证Token")
     private String token;

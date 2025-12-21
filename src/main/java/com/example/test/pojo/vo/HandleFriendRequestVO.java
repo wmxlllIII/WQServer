@@ -1,5 +1,6 @@
 package com.example.test.pojo.vo;
 
+import com.example.test.pojo.entity.FriendRelationship;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.AllArgsConstructor;
@@ -14,17 +15,10 @@ import lombok.NoArgsConstructor;
 @ApiModel(description = "被申请方处理申请返回数据类型")
 public class HandleFriendRequestVO  {
 
-    @ApiModelProperty("处理状态（accepted/rejected）")
-    private String status;
+    @ApiModelProperty("好友关系")
+    private FriendRelationship friendRelationship;
 
+    @ApiModelProperty("申请者信息")
+    private UserVO user;
 
-    @ApiModelProperty("昵称")
-    private String username;
-
-
-    @ApiModelProperty("头像")
-    private String avatarUrl;
-
-    @ApiModelProperty("邮箱")
-    private String email;
 }

@@ -5,6 +5,7 @@ import com.example.test.common.result.Result;
 import com.example.test.pojo.dto.*;
 import com.example.test.pojo.entity.Comment;
 import com.example.test.pojo.entity.Movie;
+import com.example.test.pojo.entity.Msg;
 import com.example.test.pojo.entity.User;
 import com.example.test.pojo.vo.*;
 import com.example.test.pojo.dto.SaveRoomDTO;
@@ -33,7 +34,7 @@ public interface UserService {
 
     List<FriendInfoVO> getAllFriends();
 
-    void handleMsg(MsgDTO msgDTO);
+    List<MsgVO> handleMsg(MsgDTO msgDTO);
 
     List<Movie> getMovies();
 
@@ -56,4 +57,8 @@ public interface UserService {
     Result<Comment> addComment(AddCommentDTO addCommentDTO);
 
     PageResult<PostsVO> getMyPosts(PostsQueryDTO postsQueryDTO);
+
+    StsVO getSts();
+
+    PageResult<MsgVO> getMsg(GetMsgDTO getMsgDTO);
 }

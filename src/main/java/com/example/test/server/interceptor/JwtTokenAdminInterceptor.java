@@ -47,17 +47,17 @@ public class JwtTokenAdminInterceptor implements HandlerInterceptor {
         try {
             log.info("jwt校验:{}", token);
             Claims claims = JwtUtil.parseJWT(jwtProperties.getUserSecretKey(), token);
-            String uuid = claims.get(JwtClaimsConstant.EMP_ID).toString();
-            log.info("当前userId：{}", uuid);
+            long uuNumber = Long.parseLong(claims.get(JwtClaimsConstant.EMP_ID).toString());
+            log.info("当前userId：{}", uuNumber);
 
-            claims.put(JwtClaimsConstant.EMP_ID, uuid);
+            claims.put(JwtClaimsConstant.EMP_ID, uuNumber);
             String newToken = JwtUtil.createJWT(
                     jwtProperties.getUserSecretKey(),
                     jwtProperties.getUserTtl(),
                     claims
             );
 
-            BaseContext.setCurrentId(uuid);
+            BaseContext.setCurrentId(uuNumber);
             response.setHeader(jwtProperties.getUserTokenName(), newToken);
 
             return true;

@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @ServerEndpoint(value = "/ws/{sid}", configurator = CustomSpringConfigurator.class)
 public class WebSocketServer {
 
-    private static final Map<String, Session> sessionMap = new ConcurrentHashMap<>();
+    private static final Map<Long, Session> sessionMap = new ConcurrentHashMap<>();
 
     @Autowired
     private ApplicationContext context;
@@ -40,15 +40,14 @@ public class WebSocketServer {
 
 
     @OnOpen
-    public void onOpen(Session session, @PathParam("sid") String sid) {
+    public void onOpen(Session session, @PathParam("sid") long sid) {
         //TODO检查离线表,发通知
 
         System.out.println("客户端：" + sid + "建立连接");
         try {
             sessionMap.put(sid, session);
             if (messagePushService != null) {
-                messagePushService.notifyPendingRequest(sid);
-                messagePushService.notifyMSg(sid);
+                messagePushService.checkPendingRequest(sid);
             } else {
                 System.err.println("messagePushService is null!");
             }
@@ -65,23 +64,26 @@ public class WebSocketServer {
 
 
     @OnClose
-    public void onClose(@PathParam("sid") String sid) {
+    public void onClose(@PathParam("sid") long sid) {
         System.out.println("连接断开:" + sid);
         sessionMap.remove(sid);
     }
 
-    public static void sendMessageToUser(String userId, String message) {
+    public static boolean sendMessageToUser(long userId, String message) {
         Session session = sessionMap.get(userId);
         if (session != null && session.isOpen()) {
             try {
                 session.getBasicRemote().sendText(message);
+                return true;
             } catch (Exception e) {
                 e.printStackTrace();
+                return false;
             }
         }
+        return false;
     }
 
-    public static boolean isUserOnline(String sid) {
+    public static boolean isUserOnline(long sid) {
         Session session = sessionMap.get(sid);
         return session != null && session.isOpen();
     }

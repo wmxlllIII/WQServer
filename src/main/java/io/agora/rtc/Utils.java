@@ -71,12 +71,12 @@ public class Utils {
         return new SecureRandom().nextInt();
     }
 
-    public static boolean isUUID(String uuid) {
-        if (uuid.length() != 32) {
+    public static boolean isuuNumber(String uuNumber) {
+        if (uuNumber.length() != 32) {
             return false;
         }
 
-        return uuid.matches("\\p{XDigit}+");
+        return uuNumber.matches("\\p{XDigit}+");
     }
 
     public static byte[] compress(byte[] data) {

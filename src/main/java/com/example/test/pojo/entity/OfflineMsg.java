@@ -12,18 +12,21 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class OfflineMsg {
     @ApiModelProperty("离线消息表主键ID")
-    private int messageId;
+    private int id;
+
+    @ApiModelProperty("历史消息表主键ID")
+    private int msgId;
 
     @ApiModelProperty("发送方ID")
-    private String senderId;
+    private long senderId;
 
     @ApiModelProperty("接收方ID")
-    private String receiverId;
+    private long receiverId;
 
     @ApiModelProperty("群ID")
     private int groupId;
 
-    @ApiModelProperty("消息类型:文本、语音、视频、照片")
+    @ApiModelProperty("消息类型")
     private int msgType;
 
     @ApiModelProperty("文本，文件url")

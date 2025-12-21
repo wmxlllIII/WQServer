@@ -86,7 +86,7 @@ public class AccessToken2 {
     }
 
     public String build() throws Exception {
-        if (!Utils.isUUID(this.appId) || !Utils.isUUID(this.appCert)) {
+        if (!Utils.isuuNumber(this.appId) || !Utils.isuuNumber(this.appCert)) {
             return "";
         }
 
@@ -323,37 +323,37 @@ public class AccessToken2 {
     }
 
     public static class ServiceApaas extends Service {
-        public String roomUuid;
-        public String userUuid;
+        public String roomuuNumber;
+        public String useruuNumber;
         public Short role;
 
         public ServiceApaas() {
             this.type = SERVICE_TYPE_APAAS;
-            this.roomUuid = "";
-            this.userUuid = "";
+            this.roomuuNumber = "";
+            this.useruuNumber = "";
             this.role = -1;
         }
 
-        public ServiceApaas(String roomUuid, String userUuid, Short role) {
+        public ServiceApaas(String roomuuNumber, String useruuNumber, Short role) {
             this.type = SERVICE_TYPE_APAAS;
-            this.roomUuid = roomUuid;
-            this.userUuid = userUuid;
+            this.roomuuNumber = roomuuNumber;
+            this.useruuNumber = useruuNumber;
             this.role = role;
         }
 
-        public ServiceApaas(String userUuid) {
+        public ServiceApaas(String useruuNumber) {
             this.type = SERVICE_TYPE_APAAS;
-            this.roomUuid = "";
-            this.userUuid = userUuid;
+            this.roomuuNumber = "";
+            this.useruuNumber = useruuNumber;
             this.role = -1;
         }
 
-        public String getRoomUuid() {
-            return this.roomUuid;
+        public String getRoomuuNumber() {
+            return this.roomuuNumber;
         }
 
-        public String getUserUuid() {
-            return this.userUuid;
+        public String getUseruuNumber() {
+            return this.useruuNumber;
         }
 
         public Short getRole() {
@@ -361,13 +361,13 @@ public class AccessToken2 {
         }
 
         public ByteBuf pack(ByteBuf buf) {
-            return super.pack(buf).put(this.roomUuid).put(this.userUuid).put(this.role);
+            return super.pack(buf).put(this.roomuuNumber).put(this.useruuNumber).put(this.role);
         }
 
         public void unpack(ByteBuf byteBuf) {
             super.unpack(byteBuf);
-            this.roomUuid = byteBuf.readString();
-            this.userUuid = byteBuf.readString();
+            this.roomuuNumber = byteBuf.readString();
+            this.useruuNumber = byteBuf.readString();
             this.role = byteBuf.readShort();
         }
     }

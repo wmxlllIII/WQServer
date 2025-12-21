@@ -13,9 +13,6 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class User {
 
-    private String uuid;
-
-
     private String username;
 
 
@@ -28,7 +25,7 @@ public class User {
     private String phone;
 
 
-    private BigInteger uuNumber;
+    private long uuNumber;
 
 
     private String password;

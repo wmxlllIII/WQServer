@@ -35,8 +35,8 @@ public class VerifyUtil {
         );
     }
 
-    public boolean getOnlineState(String uuid) {
-        return WebSocketServer.isUserOnline(uuid);
+    public boolean getOnlineState(long uuNumber) {
+        return WebSocketServer.isUserOnline(uuNumber);
     }
 
 

@@ -2,13 +2,13 @@ package com.example.test.common.context;
 
 public class BaseContext {
 
-    public static ThreadLocal<String> threadLocal = new ThreadLocal<>();
+    public static ThreadLocal<Long> threadLocal = new ThreadLocal<>();
 
-    public static void setCurrentId(String id) {
+    public static void setCurrentId(long id) {
         threadLocal.set(id);
     }
 
-    public static String getCurrentId() {
+    public static long getCurrentId() {
         return threadLocal.get();
     }
 

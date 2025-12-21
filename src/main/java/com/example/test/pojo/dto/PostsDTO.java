@@ -17,6 +17,6 @@ public class PostsDTO {
     @ApiModelProperty("帖子内容")
     private String content;
 
-    @ApiModelProperty("帖子图片集")
-    private List<MultipartFile> images;
+    @ApiModelProperty("帖子图片Url")
+    private List<String> images;
 }

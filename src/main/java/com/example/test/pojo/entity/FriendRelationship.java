@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -15,10 +17,10 @@ public class FriendRelationship {
     private int id;
 
 
-    private String senderId;
+    private long senderId;
 
 
-    private String receiverId;
+    private long receiverId;
 
 
     private String validMsg;
@@ -27,10 +29,10 @@ public class FriendRelationship {
     private String status;
 
 
-    private String createAt;
+    private LocalDateTime createAt;
 
 
-    private String updateAt;
+    private LocalDateTime updateAt;
 
 
 }

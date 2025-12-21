@@ -2,10 +2,7 @@ package com.example.test.pojo.vo;
 
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.sql.Timestamp;
 import java.util.List;
@@ -14,19 +11,23 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString
 @ApiModel(description = "用户发布动态返回的数据格式")
 public class PostsVO {
     @ApiModelProperty("帖子ID")
     private int postId;
 
     @ApiModelProperty("用户Email")
-    private String userId;
+    private long userId;
 
     @ApiModelProperty("用户Avatar")
     private String userAvatarUrl;
 
     @ApiModelProperty("用户昵称")
     private String nickName;
+
+    @ApiModelProperty("帖子标题")
+    private String title;
 
     @ApiModelProperty("帖子文本内容")
     private String content;

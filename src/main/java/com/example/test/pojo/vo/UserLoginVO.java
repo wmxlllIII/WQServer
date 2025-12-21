@@ -19,9 +19,6 @@ public class UserLoginVO implements Serializable {
 
     //TODO
 
-    @ApiModelProperty("主键")
-    private String uuid;
-
     @ApiModelProperty("用户邮箱")
     private String email;
 
@@ -36,6 +33,6 @@ public class UserLoginVO implements Serializable {
     private String token;
 
     @ApiModelProperty("用户数字id")
-    private BigInteger uuNumber;
+    private long uuNumber;
 
 }

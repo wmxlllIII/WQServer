@@ -14,7 +14,7 @@ public class AddCommentDTO {
     private int parentId = -1;
 
     @ApiModelProperty("回复的用户id，一级评论可不传")
-    private String replyToUserId;
+    private long replyToUserId;
 
     @ApiModelProperty("评论内容")
     private String content;

@@ -1,6 +1,5 @@
 package com.example.test.server.controller;
 
-
 import com.example.test.common.constant.JwtClaimsConstant;
 import com.example.test.common.context.BaseContext;
 import com.example.test.common.properties.JwtProperties;
@@ -10,6 +9,7 @@ import com.example.test.common.utils.JwtUtil;
 import com.example.test.pojo.dto.*;
 import com.example.test.pojo.entity.Comment;
 import com.example.test.pojo.entity.Movie;
+import com.example.test.pojo.entity.Msg;
 import com.example.test.pojo.entity.User;
 import com.example.test.pojo.vo.*;
 import com.example.test.server.service.UserService;
@@ -48,7 +48,7 @@ public class UserController {
         User user = userService.register(registerDTO);
 
         Map<String, Object> claims = new HashMap<>();
-        claims.put(JwtClaimsConstant.EMP_ID, user.getUuid());
+        claims.put(JwtClaimsConstant.EMP_ID, user.getUuNumber());
         String token = JwtUtil.createJWT(
                 jwtProperties.getUserSecretKey(),
                 jwtProperties.getUserTtl(),
@@ -56,7 +56,6 @@ public class UserController {
         );
 
         RegisterVO registerVO = RegisterVO.builder()
-                .userId(user.getUuid())
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .uuNumber(user.getUuNumber())
@@ -79,12 +78,11 @@ public class UserController {
         User user = userService.login(loginDTO);
 
         Map<String, Object> claims = new HashMap<>();
-        claims.put(JwtClaimsConstant.EMP_ID, user.getUuid());
+        claims.put(JwtClaimsConstant.EMP_ID, user.getUuNumber());
 
         String token = JwtUtil.createJWT(jwtProperties.getUserSecretKey(), jwtProperties.getUserTtl(), claims);
 
         UserLoginVO userLoginVO = UserLoginVO.builder()
-                .uuid(user.getUuid())
                 .name(user.getUsername())
                 .email(user.getEmail())
                 .uuNumber(user.getUuNumber())
@@ -99,16 +97,15 @@ public class UserController {
     @PostMapping("/autoLogin")
     @ApiOperation("用户自动登录")
     public Result<UserLoginVO> autoLogin() {
-        String userId = BaseContext.getCurrentId();
+        long userId = BaseContext.getCurrentId();
         User user = userService.autoLogin(userId);
 
         Map<String, Object> claims = new HashMap<>();
-        claims.put(JwtClaimsConstant.EMP_ID, user.getUuid());
+        claims.put(JwtClaimsConstant.EMP_ID, user.getUuNumber());
 
         String token = JwtUtil.createJWT(jwtProperties.getUserSecretKey(), jwtProperties.getUserTtl(), claims);
 
         UserLoginVO userLoginVO = UserLoginVO.builder()
-                .uuid(user.getUuid())
                 .name(user.getUsername())
                 .email(user.getEmail())
                 .uuNumber(user.getUuNumber())
@@ -145,10 +142,18 @@ public class UserController {
     @ApiOperation(value = "搜索用户")
     public Result<SearchUserVO> getUsers(@RequestBody SearchUserDTO searchUserDTO) {
         User user = userService.searchUser(searchUserDTO);
-        SearchUserVO searchUserVO = SearchUserVO.builder()
+
+        FriendInfoVO friendInfoVO = FriendInfoVO.builder()
+                .uuNumber(user.getUuNumber())
                 .username(user.getUsername())
                 .avatarUrl(user.getAvatarUrl())
                 .email(user.getEmail())
+                .updateAt(user.getUpdateAt())
+                .build();
+        SearchUserVO searchUserVO = SearchUserVO.builder()
+                .FriendInfoVO(friendInfoVO)
+                .isFriend(true)
+                .isInBlackList(true)
                 .build();
         return Result.success(searchUserVO);
     }
@@ -188,9 +193,14 @@ public class UserController {
 
     @PostMapping("msg/send")
     @ApiOperation(value = "发消息")
-    public Result<Integer> sendMsg(@RequestBody MsgDTO msgDTO) {
-        userService.handleMsg(msgDTO);
-        return Result.success(1);
+    public Result<List<MsgVO>> sendMsg(@RequestBody MsgDTO msgDTO) {
+        return Result.success(userService.handleMsg(msgDTO));
+    }
+
+    @PostMapping("msg/getMsg")
+    @ApiOperation(value = "获取消息")
+    public PageResult<MsgVO> getMsg(@RequestBody GetMsgDTO getMsgDTO) {
+        return userService.getMsg(getMsgDTO);
     }
 
     @PostMapping("movie/movies")
@@ -229,7 +239,7 @@ public class UserController {
 
     @PostMapping("post")
     @ApiOperation(value = "发布动态")
-    public Result<PostsVO> createPost(@ModelAttribute PostsDTO postsDTO) {
+    public Result<PostsVO> createPost(@RequestBody PostsDTO postsDTO) {
         PostsVO postsVO = userService.publishPost(postsDTO);
         return Result.success(postsVO);
     }
@@ -254,7 +264,14 @@ public class UserController {
 
     @PostMapping("addComment")
     @ApiOperation("发布评论")
-    public Result<Comment> addComment(@RequestBody AddCommentDTO addCommentDTO){
+    public Result<Comment> addComment(@RequestBody AddCommentDTO addCommentDTO) {
         return userService.addComment(addCommentDTO);
+    }
+
+    @PostMapping("/getStsPermission")
+    @ApiOperation("获取上传权限")
+    public Result<StsVO> getSts() {
+        StsVO sts = userService.getSts();
+        return Result.success(sts);
     }
 }

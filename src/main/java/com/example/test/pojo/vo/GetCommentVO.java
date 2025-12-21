@@ -17,10 +17,10 @@ import java.util.List;
 public class GetCommentVO {
     private int id;
     private int postId;
-    private String userId;
+    private long userId;
     private String userName;
     private int parentId;
-    private String replyToUserId;
+    private long replyToUserId;
     private String replyToUserName;
     private String content;
     private long createAt;

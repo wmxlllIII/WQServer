@@ -13,13 +13,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @ApiModel(description = "搜索用户返回的数据格式")
 public class SearchUserVO {
-    @ApiModelProperty("昵称")
-    private String username;
+    @ApiModelProperty("是否为好友")
+    private boolean isFriend;
 
+    @ApiModelProperty("是否在黑名单")
+    private boolean isInBlackList;
 
-    @ApiModelProperty("头像")
-    private String avatarUrl;
+    @ApiModelProperty("用户信息")
+    private FriendInfoVO FriendInfoVO;
 
-    @ApiModelProperty("邮箱")
-    private String email;
 }

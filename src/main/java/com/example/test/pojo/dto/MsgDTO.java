@@ -8,8 +8,9 @@ import lombok.Data;
 @Data
 @ApiModel
 public class MsgDTO {
+
     @ApiModelProperty("接收方")
-    private String targetEmail;
+    private long targetUuNumber;
 
     private int msgType;
 

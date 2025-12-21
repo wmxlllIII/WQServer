@@ -14,7 +14,7 @@ public class SearchUserDTO {
     private String phone;
 
     @ApiModelProperty("目标用户唯一数字id")
-    private String uuNumber;
+    private long uuNumber;
 
 
 }

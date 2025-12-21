@@ -19,10 +19,10 @@ public class TimeUtil {
         return Long.parseLong(time.format(date));
     }
 
-    public static long dateTimeToMinute(LocalDateTime dateTime) {
+    public static long dateTimeToSecond(LocalDateTime dateTime) {
         return dateTime
                 .atZone(ZoneId.of("Asia/Shanghai"))
                 .toEpochSecond();
-
     }
+
 }

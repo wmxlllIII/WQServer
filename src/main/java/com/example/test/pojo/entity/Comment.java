@@ -17,11 +17,11 @@ public class Comment {
 
     private int postId;
 
-    private String userId;
+    private long userId;
+
+    private long replyToUserId;
 
     private int parentId;
-
-    private String replyToUserId;
 
     private String content;
 

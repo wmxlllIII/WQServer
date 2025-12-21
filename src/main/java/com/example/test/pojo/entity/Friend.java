@@ -11,10 +11,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class Friend {
 
-    private String userUuid;
+    private long userUuid;
 
 
-    private String friendUuid;
+    private long friendUuid;
 
 
     private String createAt;

@@ -1,9 +1,13 @@
 package com.example.test.pojo.entity;
 
+import com.example.test.common.enums.ContentType;
+import com.example.test.common.enums.EventType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -13,21 +17,19 @@ public class Msg {
 
     private int id;
 
-    private String sessionId;
-
-    private String senderId;
+    private long senderId;
 
     private String senderEmail;
 
     private String receiverEmail;
 
-    private String receiverId;
+    private long receiverId;
 
-    private int type;//0文本   1分享消息  2
+    private int type;
 
     private String content;
 
-    private long timestamp;
+    private LocalDateTime createAt;
 
-
+    private LocalDateTime updateAt;
 }

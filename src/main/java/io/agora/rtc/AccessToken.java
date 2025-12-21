@@ -48,11 +48,11 @@ public class AccessToken {
     }
 
     public String build() throws Exception {
-        if (! Utils.isUUID(appId)) {
+        if (! Utils.isuuNumber(appId)) {
             return "";
         }
 
-        if (!Utils.isUUID(appCertificate)) {
+        if (!Utils.isuuNumber(appCertificate)) {
             return "";
         }
 
