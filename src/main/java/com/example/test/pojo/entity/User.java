@@ -1,9 +1,11 @@
 package com.example.test.pojo.entity;
 
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.math.BigInteger;
 import java.time.LocalDateTime;
 
 
@@ -15,30 +17,12 @@ public class User {
 
     private String username;
 
-
     private String avatarUrl;
-
-
-    private String email;
-
-
-    private String phone;
-
 
     private long uuNumber;
 
+    private LocalDateTime createAt;
 
-    private String password;
+    private LocalDateTime updateAt;
 
-
-    private Boolean emailVerified = false;
-
-
-    private String createAt;
-
-
-    private String updateAt;
-
-
-    private Integer version;
 }

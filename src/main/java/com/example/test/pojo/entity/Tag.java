@@ -5,22 +5,15 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PostImages {
+public class Tag {
 
-    private int postId;
+    private int id;
 
+    private String tagName;
 
-    private String imageUrl;
-
-
-    private int serialNum;
-
-    private LocalDateTime createAt;
-
+    private int useCount;
 }

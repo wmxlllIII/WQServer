@@ -9,7 +9,7 @@ import java.util.List;
 
 @Data
 @ApiModel(description = "用户发布帖子传递数据模型")
-public class PostsDTO {
+public class PostDTO {
 
     @ApiModelProperty("帖子标题")
     private String title;
@@ -17,6 +17,6 @@ public class PostsDTO {
     @ApiModelProperty("帖子内容")
     private String content;
 
-    @ApiModelProperty("帖子图片Url")
-    private List<String> images;
+    @ApiModelProperty("帖子图片集")
+    private List<MultipartFile> images;
 }

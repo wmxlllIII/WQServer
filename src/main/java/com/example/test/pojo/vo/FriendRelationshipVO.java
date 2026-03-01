@@ -1,6 +1,5 @@
 package com.example.test.pojo.vo;
 
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -8,23 +7,27 @@ import lombok.NoArgsConstructor;
 
 @Data
 @Builder
-@NoArgsConstructor
 @AllArgsConstructor
-public class MsgVO {
+@NoArgsConstructor
+public class FriendRelationshipVO {
 
-    private long ChatId;
+    private int id;
 
-    private int MsgId;
 
     private long senderId;
 
+
     private long receiverId;
 
-    private String content;
 
-    private int type;
+    private String validMsg;
+
+
+    private int status;
+
 
     private long createAt;
+
 
     private long updateAt;
 

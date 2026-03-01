@@ -5,22 +5,14 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PostImages {
-
-    private int postId;
-
-
-    private String imageUrl;
-
-
-    private int serialNum;
-
-    private LocalDateTime createAt;
-
+public class Actor {
+    private int actorId;
+    private String actorName;
+    private String actorIntro;
+    private int actorGender;
+    private String actorAvatar;
 }

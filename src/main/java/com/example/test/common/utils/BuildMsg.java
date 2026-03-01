@@ -19,19 +19,17 @@ public class BuildMsg {
         Msg msg = new Msg();
 
         msg.setSenderId(sender.getUuNumber());
-        msg.setType(ContentType.TYPE_TEXT.toInt());
-        msg.setReceiverId(receiver.getUuNumber());
+        msg.setChatType(ContentType.TYPE_TEXT.toInt());
+        msg.setChatId(receiver.getUuNumber());
         msg.setContent(content);
         return msg;
     }
 
     public static Msg buildShareMsg(User sender, User receiver, ShareMessageDTO shareMsgDTO) {
         Msg msg = new Msg();
-        msg.setType(ContentType.TYPE_LINK.toInt());
+        msg.setChatType(ContentType.TYPE_LINK.toInt());
         msg.setSenderId(sender.getUuNumber());
-        msg.setSenderEmail(sender.getEmail());
-        msg.setReceiverEmail(receiver.getEmail());
-        msg.setReceiverId(receiver.getUuNumber());
+        msg.setChatId(receiver.getUuNumber());
         try {
             Map<String, Object> shareContent = new HashMap<>();
             shareContent.put("linkTitle", shareMsgDTO.getLinkTitle());

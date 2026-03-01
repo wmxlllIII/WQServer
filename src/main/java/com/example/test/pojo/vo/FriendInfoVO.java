@@ -23,9 +23,6 @@ public class FriendInfoVO {
     @ApiModelProperty("头像")
     private String avatarUrl;
 
-    @ApiModelProperty("邮箱")
-    private String email;
-
     @ApiModelProperty("更新时间")
-    private String updateAt;
+    private long updateAt;
 }

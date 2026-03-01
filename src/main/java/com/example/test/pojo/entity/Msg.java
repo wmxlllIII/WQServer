@@ -1,7 +1,5 @@
 package com.example.test.pojo.entity;
 
-import com.example.test.common.enums.ContentType;
-import com.example.test.common.enums.EventType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,17 +17,26 @@ public class Msg {
 
     private long senderId;
 
-    private String senderEmail;
+    private long chatId;
 
-    private String receiverEmail;
+    private int chatType;
 
-    private long receiverId;
-
-    private int type;
+    private int messageType;
 
     private String content;
 
     private LocalDateTime createAt;
 
     private LocalDateTime updateAt;
+
+
+    public static final int CHAT_INDIVIDUAL = 100;    // 私聊 = 100;
+    public static final int CHAT_GROUP = 101;    // 群聊 = 101;
+
+
+    public static final int TYPE_TEXT = 0;    // 文字
+    public static final int TYPE_IMAGE = 1;   // 图片
+    public static final int TYPE_VOICE = 2;   // 语音
+    public static final int TYPE_VIDEO = 3;   // 视频
+    public static final int TYPE_FILE = 4;    // 其他文件（如文档）
 }

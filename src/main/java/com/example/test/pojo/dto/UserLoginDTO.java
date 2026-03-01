@@ -10,8 +10,11 @@ import java.io.Serializable;
 public class UserLoginDTO implements Serializable {
 
     @ApiModelProperty("邮箱账号")
-    private String email;
+    private String authValue;
 
     @ApiModelProperty("密码")
     private String password;
+
+    @ApiModelProperty("登录方式")
+    private int authType;
 }

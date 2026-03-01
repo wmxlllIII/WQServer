@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
 public class HandleFriendRequestVO  {
 
     @ApiModelProperty("好友关系")
-    private FriendRelationship friendRelationship;
+    private FriendRelationshipVO friendRelationship;
 
     @ApiModelProperty("申请者信息")
     private UserVO user;

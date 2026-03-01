@@ -1,14 +1,15 @@
 package com.example.test.server.service.implClass;
 
 
-import com.aliyuncs.DefaultAcsClient;
-import com.aliyuncs.auth.sts.AssumeRoleRequest;
-import com.aliyuncs.auth.sts.AssumeRoleResponse;
-import com.aliyuncs.profile.DefaultProfile;
+import com.example.test.common.constant.JwtClaimsConstant;
 import com.example.test.common.constant.MessageConstant;
 import com.example.test.common.context.BaseContext;
+import com.example.test.common.enums.AuthType;
 import com.example.test.common.enums.EventType;
+import com.example.test.common.enums.FriendStatuType;
+import com.example.test.common.enums.UpdateUserType;
 import com.example.test.common.exception.*;
+import com.example.test.common.properties.JwtProperties;
 import com.example.test.common.result.PageResult;
 import com.example.test.common.result.Result;
 import com.example.test.common.utils.*;
@@ -28,9 +29,11 @@ import org.springframework.util.DigestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -50,6 +53,9 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private MessagePushService messagePushService;
 
+    @Autowired
+    private JwtProperties jwtProperties;
+
 
     @Override
     public void getCode(SendCodeDTO sendCodeDTO) {
@@ -66,7 +72,7 @@ public class UserServiceImpl implements UserService {
             verifyUtil.storeCode(email, code);
             emailService.sendVerificationCode(email, code);
         } catch (Exception e) {
-            throw new SendException("未知错误,验证码发送失败");
+            throw new SendException("[x] getCode #75");
         }
     }
 
@@ -88,17 +94,16 @@ public class UserServiceImpl implements UserService {
         System.out.println("===============================验证码通过");
 
 
-        User isExist = userMapper.getByEmail(email);
-        if (isExist != null) {
+        Auth auth = userMapper.getAuth(AuthType.EMAIL.getValue(), email);
+        if (auth != null) {
             throw new DuplicateEmailException(MessageConstant.ALREADY_REGISTED);
         }
 
         //TODO 复杂密码验证
 
-
         User user = new User();
+        Auth loginAuth = new Auth();
         try {
-
             // 生成唯一UUNumber（YYMMDDHHmm+3位毫秒）
             long timestamp = System.currentTimeMillis();
             SimpleDateFormat sdf = new SimpleDateFormat("yyMMddHHmm");
@@ -106,30 +111,39 @@ public class UserServiceImpl implements UserService {
             String millisPart = String.format("%03d", timestamp % 1000);
             long uuNumber = Long.parseLong(timePart + millisPart);
 
-            user.setEmail(email);
-            user.setPassword(DigestUtils.md5DigestAsHex(registerDTO.getPassword().getBytes()));
             user.setUuNumber(uuNumber);
             user.setUsername("WQ_" + uuNumber);
             user.setAvatarUrl("");
-            user.setVersion(1);
 
-            userMapper.insert(user);
+            loginAuth.setUserId(uuNumber);
+            loginAuth.setAuthType(AuthType.EMAIL.getValue());
+            loginAuth.setAuthValue(email);
+            loginAuth.setPassword(DigestUtils.md5DigestAsHex(registerDTO.getPassword().getBytes()));
+
+            userMapper.insertUser(user);
+            userMapper.insertAuth(loginAuth);
 
             verifyUtil.deleteCode(email);
 
         } catch (Exception e) {
             throw new BaseException(MessageConstant.UNKNOWN_ERROR);
         }
-        return user;
+        return userMapper.getByUuNumber(user.getUuNumber());
     }
 
 
     @Override
     public User login(UserLoginDTO userLoginDTO) {
-        String email = userLoginDTO.getEmail();
+        int authType = userLoginDTO.getAuthType();
+        String authValue = userLoginDTO.getAuthValue();
         String password = userLoginDTO.getPassword();
 
-        User user = userMapper.getByEmail(email);
+        Auth auth = userMapper.getAuth(authType, authValue);
+        if (auth == null) {
+            throw new UserNotFoundException(MessageConstant.PASSWORD_ERROR);
+        }
+
+        User user = userMapper.getByUuNumber(auth.getUserId());
         if (user == null) {
             throw new UserNotFoundException(MessageConstant.PASSWORD_ERROR);
         }
@@ -137,49 +151,43 @@ public class UserServiceImpl implements UserService {
         password = DigestUtils.md5DigestAsHex(password.getBytes());
 
         log.info("Md5加密密码:{}", password);
-        if (!password.equals(user.getPassword())) {
+        if (!password.equals(auth.getPassword())) {
             throw new InvalidPasswordException(MessageConstant.PASSWORD_ERROR);
         }
-
-        //TODO
-//        if (employee.getStatus() == StatusConstant.DISABLE) {
-//            //账号被锁定
-//            throw new AccountLockedException(MessageConstant.ACCOUNT_LOCKED);
-//        }
-
-
         return user;
     }
 
 
     @Override
-    public User autoLogin(Object obj) {
-        User user = null;
-        if (obj instanceof String) {
-            String email = (String) obj;
-            user = loginByEmail(email);
-        } else if (obj instanceof Long) {
-            int phoneNum = (int) obj;
-            //TODO
-//            user = loginByPhone(phoneNum);
-        }
-
-        return user;
-    }
-
-    private User loginByEmail(String email) {
-        User user = userMapper.getByEmail(email);
+    public UserLoginVO autoLogin() {
+        long currentId = BaseContext.getCurrentId();
+        User user = userMapper.getByUuNumber(currentId);
         if (user == null) {
             throw new UserNotFoundException(MessageConstant.PASSWORD_ERROR);
         }
 
-        return user;
+        Auth authById = userMapper.getAuthById(AuthType.EMAIL.getValue(), user.getUuNumber());
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(JwtClaimsConstant.EMP_ID, user.getUuNumber());
+
+        String token = JwtUtil.createJWT(jwtProperties.getUserSecretKey(), jwtProperties.getUserTtl(), claims);
+
+        UserLoginVO userLoginVO = UserLoginVO.builder()
+                .name(user.getUsername())
+                .email(authById.getAuthValue())
+                .uuNumber(user.getUuNumber())
+                .avatarUrl(UrlUtil.fillUrl(user.getAvatarUrl()))
+                .token(token)
+                .build();
+        log.info("userLoginVO:{}", userLoginVO);
+
+        return userLoginVO;
     }
 
     @Override
-    public String updateAvatar(AvatarUploadDTO avatarUploadDTO) {
-
-
+    public UserVO updateAvatar(AvatarUploadDTO avatarUploadDTO) {
+        long currentId = BaseContext.getCurrentId();
         MultipartFile file = avatarUploadDTO.getFile();
 
         if (file == null || file.isEmpty()) {
@@ -192,18 +200,13 @@ public class UserServiceImpl implements UserService {
         }
 
         try {
-
-            long currentId = BaseContext.getCurrentId();
-
-
             User oldUser = userMapper.getByUuNumber(currentId); // 获取旧用户信息
             String oldAvatarUrl = oldUser.getAvatarUrl();
 
             String uploadDir = "C:/avatar/";
             String urlPrefix = "/avatar/";
-            String avatarUrl = "";
+            String avatarUrl = saveFileToDisk(file, uploadDir, urlPrefix);
             //TODO 更新数据库中用户头像的路径
-
 
             log.info("currentId:{}", currentId);
             userMapper.updateAvatar(currentId, avatarUrl);
@@ -212,13 +215,45 @@ public class UserServiceImpl implements UserService {
                 deleteOldAvatarFile(oldAvatarUrl);
             }
 
-            return avatarUrl;
+            User user = userMapper.getByUuNumber(currentId);
+            Auth authById = userMapper.getAuthById(AuthType.EMAIL.getValue(), user.getUuNumber());
+            Auth authByPhone = userMapper.getAuthById(AuthType.PHONE.getValue(), user.getUuNumber());
+            return UserVO.builder()
+                    .username(user.getUsername())
+                    .avatarUrl(UrlUtil.fillUrl(avatarUrl))
+                    .email(authById.getAuthValue())
+                    .phone(authByPhone.getAuthValue())
+                    .uuNumber(currentId)
+                    .createAt(TimeUtil.dateTimeToSecond(user.getCreateAt()))
+                    .updateAt(TimeUtil.dateTimeToSecond(user.getUpdateAt()))
+                    .build();
         } catch (Exception e) {
-            log.info("[x] 头像更新失败MessageConstant.UNKNOWN_ERROR #220");
+            log.info("[x] 头像更新失败MessageConstant.UNKNOWN_ERROR #220" + e.getMessage());
             throw new BaseException(MessageConstant.UNKNOWN_ERROR + "头像更新失败");
         }
     }
 
+    private String saveFileToDisk(MultipartFile file, String uploadDir, String urlPrefix) throws IOException {
+
+
+        String originalName = file.getOriginalFilename();
+        String extension = originalName.substring(originalName.lastIndexOf("."));
+        String fileName = UUID.randomUUID() + extension;
+
+
+        Path targetPath = Paths.get(uploadDir + fileName);
+
+        //  自动创建目录（如果不存在）内部封装了检查目录已经存在
+        Files.createDirectories(targetPath.getParent());
+
+        try (InputStream in = file.getInputStream()) {
+            Files.copy(in, targetPath, StandardCopyOption.REPLACE_EXISTING);
+        }
+
+
+        log.info("fileName:{}", fileName);
+        return urlPrefix + fileName;
+    }
 
     private void deleteOldAvatarFile(String oldAvatarUrl) {
         try {
@@ -237,34 +272,57 @@ public class UserServiceImpl implements UserService {
 
 
     @Override
-    public User searchUser(SearchUserDTO searchUserDTO) {
+    public SearchUserVO searchUser(SearchUserDTO searchUserDTO) {
         String phone = searchUserDTO.getPhone();
         long uuNumber = searchUserDTO.getUuNumber();
         String email = searchUserDTO.getEmail();
-        User mUser = new User();
-        if (!phone.isEmpty())
-            mUser = userMapper.getByPhone(phone);
-        if (uuNumber > 0)
-            mUser = userMapper.getByUuNumber(uuNumber);
-        if (!email.isEmpty())
-            mUser = userMapper.getByEmail(email);
-
-        if (mUser == null) {
-            throw new UserNotFoundException("用户不存在");
-        }
         User user = new User();
-        user.setUsername(mUser.getUsername());
-        user.setAvatarUrl(mUser.getAvatarUrl());
-        user.setEmail(mUser.getEmail());
-        user.setUuNumber(mUser.getUuNumber());
+        if (!phone.isEmpty()) {
+            Auth auth = userMapper.getAuth(AuthType.PHONE.getValue(), phone);
+            if (auth == null) {
+                throw new UserNotFoundException("用户不存在");
+            }
 
-        return user;
+            user = userMapper.getByUuNumber(auth.getUserId());
+        }
+
+        if (!email.isEmpty()) {
+            Auth auth = userMapper.getAuth(AuthType.EMAIL.getValue(), email);
+            if (auth == null) {
+                throw new UserNotFoundException("用户不存在");
+            }
+
+            user = userMapper.getByUuNumber(auth.getUserId());
+        }
+
+        if (uuNumber > 0) {
+            user = userMapper.getByUuNumber(uuNumber);
+        }
+
+        if (user == null) {
+            log.info("用户不存在");
+            return null;
+        }
+
+        FriendInfoVO friendInfoVO = FriendInfoVO.builder()
+                .uuNumber(user.getUuNumber())
+                .username(user.getUsername())
+                .avatarUrl(UrlUtil.fillUrl(user.getAvatarUrl()))
+                .updateAt(TimeUtil.dateTimeToSecond(user.getUpdateAt()))
+                .build();
+        SearchUserVO searchUserVO = SearchUserVO.builder()
+                .FriendInfoVO(friendInfoVO)
+                .isFriend(true)
+                .isInBlackList(true)
+                .build();
+
+        return searchUserVO;
     }
 
     @Override
     public String FriendApply(FriendApplyDTO friendApplyDTO) {
-        long targetId = friendApplyDTO.getTargetId();
         long currentId = BaseContext.getCurrentId();
+        long targetId = friendApplyDTO.getTargetId();
         User receiver = userMapper.getByUuNumber(targetId);
 
         if (userMapper.existsPendingApply(currentId, targetId)) {
@@ -274,7 +332,7 @@ public class UserServiceImpl implements UserService {
         User sender = userMapper.getByUuNumber(currentId);
 
         FriendRelationship relationship = new FriendRelationship();
-        relationship.setStatus("pending");
+        relationship.setStatus(FriendStatuType.PENDING.getValue());
         relationship.setReceiverId(targetId);
         relationship.setSenderId(currentId);
         relationship.setValidMsg(friendApplyDTO.getValidMsg());
@@ -288,39 +346,48 @@ public class UserServiceImpl implements UserService {
             Map<String, Object> request = BuildRelaUtil.buildRequest(sender, receiver, relation);
             requestList.add(request);
             messagePushService.pushToUser(targetId, EventType.EVENT_TYPE_REQUEST_FRIEND, requestList);
-        } else {
-            userMapper.saveOfflineMsg(relationship.getId(), EventType.getIntEventType(EventType.EVENT_TYPE_REQUEST_FRIEND), currentId, targetId);
         }
 
         return "sended";
     }
 
     @Override
+    public boolean deleteFriend(DeleteFriendDTO dto) {
+        long currentId = BaseContext.getCurrentId();
+        if (dto.getUserId() <= 0 || dto.getUserId() == currentId) {
+            return false;
+        }
+
+        return userMapper.deleteFriend(currentId, dto.getUserId());
+    }
+
+    @Override
     public HandleFriendRequestVO handleResponse(HandleFriendRequestDTO friendRequestDTO) {
+        long currentId = BaseContext.getCurrentId();
         long sourceUuNumber = friendRequestDTO.getSourceUuNumber();//申请者
         boolean isAgree = friendRequestDTO.isAgree();
         log.info("sourceUuNumber {}", sourceUuNumber);
         log.info("isAgree {}", isAgree);
         User requester = userMapper.getByUuNumber(sourceUuNumber);
-        long currentId = BaseContext.getCurrentId();
+        Auth auth = userMapper.getAuthById(AuthType.EMAIL.getValue(), sourceUuNumber);
 
         if (isAgree) {
             log.info("isAgree enter");
             userMapper.updateStateAgree(requester.getUuNumber(), currentId);
-            userMapper.insertFriend(requester.getUuNumber(), BaseContext.getCurrentId());
+            userMapper.insertFriend(requester.getUuNumber(), currentId);
         } else {
             log.info("! isAgree ");
             userMapper.updateStateReject(requester.getUuNumber(), currentId);
         }
         HandleFriendRequestVO vo = new HandleFriendRequestVO();
-        FriendRelationship targetRela = userMapper.getTargetRela(sourceUuNumber,currentId);
-        vo.setFriendRelationship(targetRela);
+        FriendRelationship targetRela = userMapper.getTargetRela(sourceUuNumber, currentId);
+        vo.setFriendRelationship(targetRela.toVO());
 
         if (isAgree) {
             UserVO userVO = new UserVO();
             userVO.setUsername(requester.getUsername());
-            userVO.setAvatarUrl(requester.getAvatarUrl());
-            userVO.setEmail(requester.getEmail());
+            userVO.setAvatarUrl(UrlUtil.fillUrl(requester.getAvatarUrl()));
+            userVO.setEmail(auth.getAuthValue());
             userVO.setUuNumber(requester.getUuNumber());
             userVO.setUpdateAt(-1L);
             vo.setUser(userVO);
@@ -331,8 +398,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<Map<String, Object>> getAllFriendRequest() {
-
-        List<FriendRelationship> relationshipList = userMapper.getAllRela(BaseContext.getCurrentId());
+        long currentId = BaseContext.getCurrentId();
+        List<FriendRelationship> relationshipList = userMapper.getAllRela(currentId);
 
         List<Map<String, Object>> requestList = new ArrayList<>();
         if (!relationshipList.isEmpty()) {
@@ -345,7 +412,7 @@ public class UserServiceImpl implements UserService {
                 Map<String, Object> request = BuildRelaUtil.buildRequest(sender, receiver, relation);
 
                 requestList.add(request);
-                userMapper.requestSended(BaseContext.getCurrentId(), senderId);
+                userMapper.requestSended(currentId, senderId);
             }
 
         }
@@ -355,12 +422,12 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<FriendInfoVO> getAllFriends() {
-        List<FriendInfoVO> friendList = new ArrayList<>();
         long currentId = BaseContext.getCurrentId();
+        List<FriendInfoVO> friendList = new ArrayList<>();
 
-        List<Friend> mFriendList = userMapper.getAllFriends(currentId);
-        for (Friend friend : mFriendList) {
-            long friendId = friend.getUserUuid() == currentId ? friend.getFriendUuid() : friend.getUserUuid();
+        List<FriendRelationship> mFriendList = userMapper.getAllFriends(currentId, FriendStatuType.ACCEPTED.getValue());
+        for (FriendRelationship friend : mFriendList) {
+            long friendId = friend.getSenderId() == currentId ? friend.getReceiverId() : friend.getSenderId();
             User friendInfo = userMapper.getByUuNumber(friendId);
             log.info("===================好友信息={}", friendInfo);
             FriendInfoVO friendInfoVO = BuildFriendInfoUtil.buildFriendInfo(friendInfo);
@@ -372,13 +439,13 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<MsgVO> handleMsg(MsgDTO msgDTO) {//发消息
+        long currentId = BaseContext.getCurrentId();
         long targetUuNumber = msgDTO.getTargetUuNumber();//接收者
         String msg = msgDTO.getMsg();
-        long senderId = BaseContext.getCurrentId();//当前用户id
         User receiver = userMapper.getByUuNumber(targetUuNumber);//接收者
-        User sender = userMapper.getByUuNumber(senderId);//发送者
-        log.info("handleMsg sender {}",sender);
-        log.info("handleMsg receiver {}",receiver);
+        User sender = userMapper.getByUuNumber(currentId);//发送者
+        log.info("handleMsg sender {}", sender);
+        log.info("handleMsg receiver {}", receiver);
         Msg saveMsg = BuildMsg.buildSaveMsg(sender, receiver, msg);
         userMapper.saveHistoryMsg(saveMsg);
         log.info("msgid是{}", saveMsg.getId());
@@ -391,24 +458,23 @@ public class UserServiceImpl implements UserService {
             MsgVO vo = new MsgVO();
             vo.setMsgId(it.getId());
             vo.setSenderId(it.getSenderId());
-            vo.setReceiverId(it.getReceiverId());
+            vo.setReceiverId(it.getChatId());
             vo.setContent(it.getContent());
-            vo.setType(it.getType());
+            vo.setType(it.getChatType());
             vo.setCreateAt(TimeUtil.dateTimeToSecond(it.getCreateAt()));
             return vo;
         }).collect(Collectors.toList());
         if (WebSocketServer.isUserOnline(receiver.getUuNumber())) {
             messagePushService.pushToUser(receiver.getUuNumber(), EventType.EVENT_TYPE_MSG, msgVOList);
-        } else {
-            userMapper.saveOfflineMsg(saveMsg.getId(), EventType.getIntEventType(EventType.EVENT_TYPE_MSG), senderId, receiver.getUuNumber());
         }
 
         return msgVOList;
     }
 
     @Override
-    public List<Movie> getMovies() {
-        return userMapper.getAllMovies();
+    public List<MovieVO> getMovies() {
+        List<Movie> movies = userMapper.getAllMovies();
+        return movies.stream().map(Movie::toVO).collect(Collectors.toList());
     }
 
     @Override
@@ -425,7 +491,7 @@ public class UserServiceImpl implements UserService {
             RoomVO roomVO = new RoomVO();
             roomVO.setRoomId(room.getRoomId());
             roomVO.setMovieUrl(movieUrl);
-            roomVO.setMovieCover(movieCover);
+            roomVO.setMovieCover(UrlUtil.fillUrl(movieCover));
             roomVO.setMovieName(movieName);
             roomVOList.add(roomVO);
         }
@@ -446,25 +512,59 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void updateUserInfo(UpdateUserInfoDTO updateUserInfoDTO) {
+    public UserVO updateUserInfo(UpdateUserinfoDTO updateUserDTO) {
         long currentId = BaseContext.getCurrentId();
-        userMapper.updateUserInfo(currentId, updateUserInfoDTO.getUserName());
+        UpdateUserType type = updateUserDTO.getType();
+        switch (type) {
+            case USERNAME:
+                userMapper.updateUserInfo(currentId, (String) updateUserDTO.getData());
+                break;
+//            case EMAIL:
+//                userMapper.updateEmail(currentId, updateUserDTO.getData());
+//                break;
+//            case GENDER:
+//                userMapper.updateGender(currentId,updateUserDTO.getData());
+//                break;
+//            case SIGNATURE:
+//                userMapper.updateSignature(currentId,updateUserDTO.getData());
+//                break;
+//            case PHONE:
+//                userMapper.updatePhone(currentId, updateUserDTO.getData());
+//                break;
+            default:
+                break;
+        }
+
+        User user = userMapper.getByUuNumber(currentId);
+        Auth authById = userMapper.getAuthById(AuthType.EMAIL.getValue(), user.getUuNumber());
+        Auth authByPhone = userMapper.getAuthById(AuthType.PHONE.getValue(), user.getUuNumber());
+        return UserVO.builder()
+                .username(user.getUsername())
+                .avatarUrl(UrlUtil.fillUrl(user.getAvatarUrl()))
+                .email(authById.getAuthValue())
+                .phone(authByPhone.getAuthValue())
+                .uuNumber(currentId)
+                .createAt(TimeUtil.dateTimeToSecond(user.getCreateAt()))
+                .updateAt(TimeUtil.dateTimeToSecond(user.getUpdateAt()))
+                .build();
     }
 
     @Override
     public int saveShareMessage(ShareMessageDTO shareDTO) {
         long currentId = BaseContext.getCurrentId();
         User user = userMapper.getByUuNumber(currentId);
-        String targetEmail = shareDTO.getTargetEmail();
-        User targetUser = userMapper.getByEmail(targetEmail);
+
+        int targetId = shareDTO.getTargetId();
+        User targetUser = userMapper.getByUuNumber(targetId);
+
         Msg shareMsg = BuildMsg.buildShareMsg(user, targetUser, shareDTO);
         userMapper.saveHistoryMsg(shareMsg);
 
         boolean isOnline = WebSocketServer.isUserOnline(targetUser.getUuNumber());
         if (isOnline) {
             Map<String, Object> shareContent = new HashMap<>();
-            shareContent.put("senderEmail", user.getEmail());
-            shareContent.put("receiverEmail", shareDTO.getTargetEmail());
+            shareContent.put("senderId", user.getUuNumber());
+            shareContent.put("receiverId", shareDTO.getTargetId());
             shareContent.put("linkTitle", shareDTO.getLinkTitle());
             shareContent.put("linkContent", shareDTO.getLinkContent());
             shareContent.put("linkImageUrl", shareDTO.getLinkImageUrl());
@@ -473,18 +573,17 @@ public class UserServiceImpl implements UserService {
             msgList.add(shareContent);
 
             messagePushService.pushToUser(targetUser.getUuNumber(), EventType.EVENT_TYPE_SHAREMSG, msgList);
-        } else {
-            userMapper.saveOfflineMsg(shareMsg.getId(), EventType.getIntEventType(EventType.EVENT_TYPE_SHAREMSG), currentId, targetUser.getUuNumber());
         }
         return 0;
     }
 
     @Override
-    public PostsVO publishPost(PostsDTO postsDTO) {
-        List<String> imageList = postsDTO.getImages();
+    public PostsVO publishPost(PostDTO postsDTO) {
+        List<MultipartFile> imageList = postsDTO.getImages();
 
-        Post needSavePost = new Post();
         long currentId = BaseContext.getCurrentId();
+        Post needSavePost = new Post();
+        log.info("publishPost postsDTO {}", postsDTO);
         needSavePost.setUserId(currentId);
         needSavePost.setTitle(postsDTO.getTitle());
         needSavePost.setContent(postsDTO.getContent());
@@ -493,39 +592,92 @@ public class UserServiceImpl implements UserService {
         userMapper.savePost(needSavePost);
         Post savedPost = userMapper.getPostById(needSavePost.getId());
 
+        //保存图片
         List<String> postImageUrlList = new ArrayList<>();
-        if (imageList == null || imageList.isEmpty()) {
-            log.info("[x] publishPost #483");
-            return null;
+        if (imageList != null && !imageList.isEmpty()) {
+            String uploadDir = "C:/postImages/";
+            String urlPrefix = "/postImages/";
+
+            for (int i = 0; i < imageList.size(); i++) {
+                MultipartFile file = imageList.get(i);
+                try {
+
+                    String imageUrl = saveFileToDisk(file, uploadDir, urlPrefix);
+                    postImageUrlList.add(imageUrl);
+                    PostImages postImages = new PostImages();
+                    postImages.setImageUrl(imageUrl);
+                    postImages.setPostId(savedPost.getId());
+                    postImages.setSerialNum(i + 1);
+                    userMapper.savePostImages(postImages);
+
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+        }
+        String coverUrl = null;
+        if (!postImageUrlList.isEmpty()) {
+            coverUrl = postImageUrlList.get(0);
         }
 
-        for (int i = 0; i < imageList.size(); i++) {
-            String imageUrl = imageList.get(i);
-            postImageUrlList.add(imageUrl);
-            PostImages postImages = new PostImages();
-            postImages.setImageUrl(imageUrl);
-            postImages.setPostId(savedPost.getId());
-            postImages.setSerialNum(i + 1);
-            userMapper.savePostImages(postImages);
-        }
-
-        String coverUrl;
-        if (postImageUrlList.isEmpty()) {
-            log.info("[x] publishPost #499");
-            return null;
-        }
-
-        coverUrl = postImageUrlList.get(0);
         return PostsVO.builder()
                 .postId(savedPost.getId())
                 .userId(currentId)
-                .title(savedPost.getTitle())
                 .content(savedPost.getContent())
                 .imageUrls(postImageUrlList)
                 .coverUrl(coverUrl)
                 .createAt(TimeUtil.dateTimeToSecond(savedPost.getCreateAt()))
                 .build();
     }
+
+//    @Override
+//    public PostsVO publishPost(OssPostsDTO postsDTO) {
+//        long currentId = BaseContext.getCurrentId();
+//        List<String> imageList = postsDTO.getImages();
+//
+//        Post needSavePost = new Post();
+//        needSavePost.setUserId(currentId);
+//        needSavePost.setTitle(postsDTO.getTitle());
+//        needSavePost.setContent(postsDTO.getContent());
+//        needSavePost.setLikeCount(0);
+//
+//        userMapper.savePost(needSavePost);
+//        Post savedPost = userMapper.getPostById(needSavePost.getId());
+//
+//        List<String> postImageUrlList = new ArrayList<>();
+//        if (imageList == null || imageList.isEmpty()) {
+//            log.info("[x] publishPost #483");
+//            return null;
+//        }
+//
+//        for (int i = 0; i < imageList.size(); i++) {
+//            String imageUrl = imageList.get(i);
+//            postImageUrlList.add(imageUrl);
+//            PostImages postImages = new PostImages();
+//            postImages.setImageUrl(imageUrl);
+//            postImages.setPostId(savedPost.getId());
+//            postImages.setSerialNum(i + 1);
+//            userMapper.savePostImages(postImages);
+//        }
+//
+//        String coverUrl;
+//        if (postImageUrlList.isEmpty()) {
+//            log.info("[x] publishPost #499");
+//            return null;
+//        }
+//
+//        coverUrl = postImageUrlList.get(0);
+//        return PostsVO.builder()
+//                .postId(savedPost.getId())
+//                .userId(currentId)
+//                .title(savedPost.getTitle())
+//                .content(savedPost.getContent())
+//                .imageUrls(postImageUrlList)
+//                .coverUrl(coverUrl)
+//                .createAt(TimeUtil.dateTimeToSecond(savedPost.getCreateAt()))
+//                .build();
+//    }
 
     @Override
     public PageResult<PostsVO> getPosts(PostsQueryDTO postsQueryDTO) {
@@ -539,11 +691,32 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public PageResult<PostsVO> getMyPosts(PostsQueryDTO postsQueryDTO) {
+        long currentId = BaseContext.getCurrentId();
         int page = Math.max(postsQueryDTO.getPage(), 1);
         int size = Math.max(postsQueryDTO.getSize(), 1);
         int offset = (page - 1) * size;
-        long currentId = BaseContext.getCurrentId();
         List<Post> postList = userMapper.getMyPosts(currentId, offset, size + 1);
+        return getPostsVOPageResult(page, size, postList);
+    }
+
+    @Override
+    public PageResult<PostsVO> getFollowerPost(PostsQueryDTO postsQueryDTO) {
+        long currentId = BaseContext.getCurrentId();
+        int page = Math.max(postsQueryDTO.getPage(), 1);
+        int size = Math.max(postsQueryDTO.getSize(), 1);
+        int offset = (page - 1) * size;
+
+        List<Long> followedUserIds = userMapper.getFollowedUserIds(currentId);
+        if (followedUserIds == null || followedUserIds.isEmpty()) {
+            return PageResult.<PostsVO>builder()
+                    .resultList(Collections.emptyList())
+                    .page(page)
+                    .size(size)
+                    .hasNext(false)
+                    .build();
+        }
+
+        List<Post> postList = userMapper.getPostsByUserIds(followedUserIds, offset, size + 1);
         return getPostsVOPageResult(page, size, postList);
     }
 
@@ -555,11 +728,20 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public PageResult<MsgVO> getMsg(GetMsgDTO getMsgDTO) {
+        long currentId = BaseContext.getCurrentId();
         int page = Math.max(getMsgDTO.getPage(), 1);
         int size = Math.max(getMsgDTO.getSize(), 1);
         int offset = (page - 1) * size;
 
-        long currentId = BaseContext.getCurrentId();
+        if (getMsgDTO.getChatType() == 0) {
+
+
+        } else if (getMsgDTO.getChatType() == 1) {
+
+        } else {
+            log.info("[x] getMsg #");
+        }
+
         List<Msg> pageMsg = userMapper.getUserMsg(currentId, getMsgDTO.getChatId(), offset, size + 1);
         if (pageMsg == null || pageMsg.isEmpty()) {
             return PageResult.<MsgVO>builder()
@@ -576,9 +758,9 @@ public class UserServiceImpl implements UserService {
             MsgVO vo = new MsgVO();
             vo.setMsgId(msg.getId());
             vo.setSenderId(msg.getSenderId());
-            vo.setReceiverId(msg.getReceiverId());
+            vo.setReceiverId(msg.getChatId());
             vo.setContent(msg.getContent());
-            vo.setType(msg.getType());
+            vo.setType(msg.getChatType());
             vo.setCreateAt(TimeUtil.dateTimeToSecond(msg.getCreateAt()));
             return vo;
         }).collect(Collectors.toList());
@@ -613,11 +795,16 @@ public class UserServiceImpl implements UserService {
                 .collect(Collectors.toList());
 
         List<PostImages> imageList = userMapper.getImagesByPostIds(postIds);
+        List<Integer> likedPostIds = userMapper.getLikedPostIdsByUser(postIds, BaseContext.getCurrentId());
+        Set<Integer> likedPostIdSet = likedPostIds == null
+                ? Collections.emptySet()
+                : new HashSet<>(likedPostIds);
+
         List<PostsVO> postsVOList = null;
         if (imageList != null && !imageList.isEmpty()) {
             Map<Integer, List<PostImages>> imageMap = imageList.stream().collect(Collectors.groupingBy(PostImages::getPostId));
             postsVOList = postList.stream()
-                    .map(post -> convertToPostsVO(post, imageMap))
+                    .map(post -> convertToPostsVO(post, imageMap, likedPostIdSet))
                     .collect(Collectors.toList());
         }
 
@@ -629,15 +816,17 @@ public class UserServiceImpl implements UserService {
                 .build();
     }
 
-    private PostsVO convertToPostsVO(Post post, Map<Integer, List<PostImages>> imageMap) {
+    private PostsVO convertToPostsVO(Post post, Map<Integer, List<PostImages>> imageMap, Set<Integer> likedPostIdSet) {
         User user = userMapper.getByUuNumber(post.getUserId());
         PostsVO.PostsVOBuilder postsVOBuilder = PostsVO.builder()
                 .postId(post.getId())
                 .userId(post.getUserId())
                 .nickName(user.getUsername())
                 .userAvatarUrl(UrlUtil.fillUrl(user.getAvatarUrl()))
+                .title(post.getTitle())
                 .content(post.getContent())
                 .likeCount(post.getLikeCount())
+                .isLiked(likedPostIdSet.contains(post.getId()) ? 1 : 0)
                 .createAt(TimeUtil.dateTimeToSecond(post.getCreateAt()));
 
         List<String> imageUrlsList = Optional.ofNullable(imageMap.get(post.getId()))
@@ -744,7 +933,7 @@ public class UserServiceImpl implements UserService {
         vo.setParentId(comment.getParentId());
         vo.setReplyToUserId(comment.getReplyToUserId());
         vo.setContent(comment.getContent());
-        vo.setCreateAt(comment.getCreateAt().getTime() / 1000);
+        vo.setCreateAt(TimeUtil.dateTimeToSecond(comment.getCreateAt()));
         return vo;
     }
 
@@ -766,4 +955,143 @@ public class UserServiceImpl implements UserService {
     }
 
 
+    @Override
+    public FollowUserVO followUser(FollowUserDTO dto) {
+        long currentId = BaseContext.getCurrentId();
+        userMapper.followUser(currentId, dto.getUserId());
+        return null;
+    }
+
+    @Override
+    public UnFollowUserVO unFollowUser(FollowUserDTO dto) {
+        long currentId = BaseContext.getCurrentId();
+        userMapper.cancelFollowUser(currentId, dto.getUserId());
+        return null;
+    }
+
+    @Override
+    public List<MovieCateVO> getMovieCategory() {
+        List<MovieCategory> movieCategory = userMapper.getMovieCategory();
+
+        return movieCategory.stream()
+                .map(category -> new MovieCateVO(
+                        category.getCate_id(),
+                        category.getCate_name()
+                ))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public void saveMovieProgress(SaveProgressDTO dto) {
+        long userId = BaseContext.getCurrentId();
+
+        // 查找是否存在该用户和该电影的记录
+        MovieHistory existingHistory = userMapper.findByUserIdAndMovieId(userId, dto.getMovieId());
+
+        if (existingHistory != null) {
+            // 如果记录已存在，更新进度
+            existingHistory.setProgress(dto.getCurrentProgress());
+            if (existingHistory.getProgress() >= 95) {
+                existingHistory.setWatchCount(existingHistory.getWatchCount() + 1);
+            }
+
+            userMapper.updateMovieProgress(existingHistory);
+        } else {
+            // 如果没有记录，插入新的记录
+            MovieHistory newHistory = new MovieHistory();
+            newHistory.setMovieId(dto.getMovieId());
+            newHistory.setUserId(userId);
+            newHistory.setWatchCount(1);
+            newHistory.setProgress(dto.getCurrentProgress());
+
+            userMapper.insertMovieProgress(newHistory);
+        }
+    }
+
+    @Override
+    public List<MovieHistoryVO> getWatchHistory() {
+        long userId = BaseContext.getCurrentId();
+        List<MovieHistory> movieHistoryList = userMapper.getWatchHistory(userId);
+        return movieHistoryList.stream()
+                .map(movieHistory -> new MovieHistoryVO(
+                        movieHistory.getMovieId(),
+                        movieHistory.getUserId(),
+                        movieHistory.getWatchCount(),
+                        movieHistory.getProgress(),
+                        movieHistory.getCreateAt(),
+                        movieHistory.getUpdateAt()
+                ))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public ActorProfileVO getActorProfile(ActorProfileDTO dto) {
+        Actor actor = userMapper.getActorProfile(dto.getActorId());
+        if (actor == null) {
+            log.info("[x] getActorProfile #1031");
+            return null;
+        }
+
+        return new ActorProfileVO(
+                actor.getActorId(),
+                actor.getActorName(),
+                actor.getActorIntro(),
+                actor.getActorGender(),
+                actor.getActorAvatar()
+        );
+    }
+
+    @Override
+    public List<PostsVO> getLikePost() {
+        long userId = BaseContext.getCurrentId();
+        List<PostLike> likePost = userMapper.getLikePost(userId);
+        if (likePost == null || likePost.isEmpty()) {
+            log.info("[x] 用户没有点赞任何帖子 #968");
+            return Collections.emptyList();
+        }
+
+        return likePost.stream()
+                .map(postLike -> {
+                    Post post = userMapper.getPostById(postLike.getPostId());
+                    if (post != null) {
+                        return convertToPostsVO(post, null, null);
+                    }
+                    return null;
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<PostsVO> getFootprintPost() {
+        long userId = BaseContext.getCurrentId();
+        List<FootPrint> footprintPost = userMapper.getFootprintPost(userId);
+        if (footprintPost == null || footprintPost.isEmpty()) {
+            log.info("[x] 用户没有浏览任何帖子 #989");
+            return Collections.emptyList();
+        }
+
+        return footprintPost.stream()
+                .map(footprint -> {
+                    Post post = userMapper.getPostById(footprint.getPostId());
+                    if (post != null) {
+                        return convertToPostsVO(post, null, null);
+                    }
+                    return null;
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Boolean likePostIfNeed(LikePostDTO dto) {
+        long userId = BaseContext.getCurrentId();
+        PostLike postLike = userMapper.selectExistLikePost(userId, dto.getPostId());
+        if (postLike == null) {
+            userMapper.insertLikePost(userId, dto.getPostId());
+        } else {
+            userMapper.deleteLikePost(userId, dto.getPostId());
+        }
+        return true;
+    }
 }

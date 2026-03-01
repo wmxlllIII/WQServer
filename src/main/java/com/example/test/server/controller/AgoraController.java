@@ -29,7 +29,7 @@ public class AgoraController {
     @ApiOperation(value = "获取声网token")
     public Result<AgoraTokenVO> generateToken(@RequestBody AgoraTokenDTO tokenDTO) {
         // 参数校验
-        if (tokenDTO.getChannelName() == null || tokenDTO.getChannelName().isEmpty()) {
+        if (tokenDTO.getChannelName() <=0) {
             return Result.error("频道名称不能为空");
         }
 

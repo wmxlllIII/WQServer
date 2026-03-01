@@ -40,8 +40,9 @@ public class RegisterVO implements Serializable {
     @ApiModelProperty("邮箱是否已验证")
     private Boolean emailVerified;
 
+    //todo createAt
     @ApiModelProperty("注册时间")
-    private String registerTime;
+    private long registerTime;
 
     @ApiModelProperty("状态码")
     private Integer code;

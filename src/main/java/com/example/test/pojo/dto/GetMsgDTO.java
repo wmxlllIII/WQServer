@@ -7,4 +7,5 @@ public class GetMsgDTO {
     private int page;
     private int size;
     private long chatId;
+    private int chatType;
 }

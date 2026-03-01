@@ -5,17 +5,14 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Friend {
-
-    private long userUuid;
-
-
-    private long friendUuid;
-
-
-    private String createAt;
+public class PostLike {
+    private int postId;
+    private long userId;
+    private LocalDateTime createAt;
 }

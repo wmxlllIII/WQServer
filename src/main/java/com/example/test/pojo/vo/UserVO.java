@@ -19,5 +19,10 @@ public class UserVO {
 
     private String email;
 
+    private String phone;
+
+    private long createAt;
+
     private long updateAt;
+
 }

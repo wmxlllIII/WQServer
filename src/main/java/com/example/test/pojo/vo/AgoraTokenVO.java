@@ -8,8 +8,8 @@
     public class AgoraTokenVO {
         private String token;
         private String appId;
-        private String channelName;
-        private String userId;
+        private long channelName;
+        private long userId;
         private int role;
         private int expireTime;
     }

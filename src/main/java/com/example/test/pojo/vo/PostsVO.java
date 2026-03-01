@@ -41,6 +41,9 @@ public class PostsVO {
     @ApiModelProperty("喜欢数量")
     private int likeCount;
 
+    @ApiModelProperty("是否喜欢")
+    private int isLiked;
+
     @ApiModelProperty("创建时间")
     private long createAt;
 }

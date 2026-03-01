@@ -6,8 +6,8 @@ import lombok.Data;
 @Data
 @ApiModel(description = "获取声网token数据模型")
 public class AgoraTokenDTO {
-    private String channelName;
-    private String userId;
+    private long channelName;
+    private long userId;
     private int role;
     private int expire;
 }

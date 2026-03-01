@@ -1,16 +1,14 @@
 package com.example.test.server.controller;
 
 import com.example.test.common.constant.JwtClaimsConstant;
-import com.example.test.common.context.BaseContext;
 import com.example.test.common.properties.JwtProperties;
 import com.example.test.common.result.PageResult;
 import com.example.test.common.result.Result;
 import com.example.test.common.utils.JwtUtil;
+import com.example.test.common.utils.TimeUtil;
+import com.example.test.common.utils.UrlUtil;
 import com.example.test.pojo.dto.*;
-import com.example.test.pojo.entity.Comment;
-import com.example.test.pojo.entity.Movie;
-import com.example.test.pojo.entity.Msg;
-import com.example.test.pojo.entity.User;
+import com.example.test.pojo.entity.*;
 import com.example.test.pojo.vo.*;
 import com.example.test.server.service.UserService;
 import io.swagger.annotations.ApiOperation;
@@ -34,7 +32,7 @@ public class UserController {
     @Autowired
     private JwtProperties jwtProperties;
 
-    @PostMapping("/sendcode")
+    @PostMapping("/sendCode")
     @ApiOperation("用户获取验证码")
     public Result<Void> sendCode(@RequestBody SendCodeDTO sendCodeDTO) {
         userService.getCode(sendCodeDTO);
@@ -57,13 +55,13 @@ public class UserController {
 
         RegisterVO registerVO = RegisterVO.builder()
                 .username(user.getUsername())
-                .email(user.getEmail())
+                .email(registerDTO.getEmail())
                 .uuNumber(user.getUuNumber())
                 .token(token)
-                .avatarUrl(user.getAvatarUrl())
+                .avatarUrl(UrlUtil.fillUrl(user.getAvatarUrl()))
                 .status("active")
                 .emailVerified(false)
-                .registerTime(user.getCreateAt())
+                .registerTime(TimeUtil.dateTimeToSecond(user.getCreateAt()))
                 .build();
 
 
@@ -84,9 +82,9 @@ public class UserController {
 
         UserLoginVO userLoginVO = UserLoginVO.builder()
                 .name(user.getUsername())
-                .email(user.getEmail())
+                .email(loginDTO.getAuthValue())
                 .uuNumber(user.getUuNumber())
-                .avatarUrl(user.getAvatarUrl())
+                .avatarUrl(UrlUtil.fillUrl(user.getAvatarUrl()))
                 .token(token)
                 .build();
         log.info("userLoginVO:{}", userLoginVO);
@@ -97,64 +95,36 @@ public class UserController {
     @PostMapping("/autoLogin")
     @ApiOperation("用户自动登录")
     public Result<UserLoginVO> autoLogin() {
-        long userId = BaseContext.getCurrentId();
-        User user = userService.autoLogin(userId);
-
-        Map<String, Object> claims = new HashMap<>();
-        claims.put(JwtClaimsConstant.EMP_ID, user.getUuNumber());
-
-        String token = JwtUtil.createJWT(jwtProperties.getUserSecretKey(), jwtProperties.getUserTtl(), claims);
-
-        UserLoginVO userLoginVO = UserLoginVO.builder()
-                .name(user.getUsername())
-                .email(user.getEmail())
-                .uuNumber(user.getUuNumber())
-                .avatarUrl(user.getAvatarUrl())
-                .token(token)
-                .build();
-        log.info("userLoginVO:{}", userLoginVO);
+        UserLoginVO userLoginVO = userService.autoLogin();
 
         return Result.success(userLoginVO);
     }
 
     @PostMapping(value = "/avatar")
     @ApiOperation("更新用户头像")
-    public Result<String> updateAvatar(@ModelAttribute AvatarUploadDTO avatarUploadDTO) {
-        String avatarUrl = userService.updateAvatar(avatarUploadDTO);
+    public Result<UserVO> updateAvatar(@ModelAttribute AvatarUploadDTO avatarUploadDTO) {
+        UserVO userVO = userService.updateAvatar(avatarUploadDTO);
 //        UpdateAvatarVO updateAvatarVO = UpdateAvatarVO.builder()
 //                .avatarUrl(avatarUrl)
 //                .build();
 //        return Result.success(UpdateAvatarVO);
-        return Result.success(avatarUrl);
+        return Result.success(userVO);
     }
 
-    @PostMapping("/updateuserinfo")
-    @ApiOperation("更新个人信息")
-    public Result<UpdateUserInfoVO> updateUserInfo(@RequestBody UpdateUserInfoDTO updateUserInfoDTO) {
-        userService.updateUserInfo(updateUserInfoDTO);
-        UpdateUserInfoVO updateUserInfoVO = UpdateUserInfoVO.builder()
-                .userName(updateUserInfoDTO.getUserName())
-                .build();
-        return Result.success(updateUserInfoVO);
+    @PostMapping("/updateUserinfo")
+    @ApiOperation("更新用户信息")
+    public Result<UserVO> updateUserInfo(@RequestBody UpdateUserinfoDTO dto) {
+        UserVO userVO = userService.updateUserInfo(dto);
+        return Result.success(userVO);
     }
 
     @PostMapping(value = "/searchUser")
     @ApiOperation(value = "搜索用户")
     public Result<SearchUserVO> getUsers(@RequestBody SearchUserDTO searchUserDTO) {
-        User user = userService.searchUser(searchUserDTO);
-
-        FriendInfoVO friendInfoVO = FriendInfoVO.builder()
-                .uuNumber(user.getUuNumber())
-                .username(user.getUsername())
-                .avatarUrl(user.getAvatarUrl())
-                .email(user.getEmail())
-                .updateAt(user.getUpdateAt())
-                .build();
-        SearchUserVO searchUserVO = SearchUserVO.builder()
-                .FriendInfoVO(friendInfoVO)
-                .isFriend(true)
-                .isInBlackList(true)
-                .build();
+        SearchUserVO searchUserVO = userService.searchUser(searchUserDTO);
+        if (searchUserVO == null) {
+            return Result.error("用户不存在");
+        }
         return Result.success(searchUserVO);
     }
 
@@ -167,6 +137,17 @@ public class UserController {
                 .build();
 
         return Result.success(friendApplyVO);
+    }
+
+    @PostMapping(value = "/friend/delete")
+    @ApiOperation(value = "删除好友")
+    public Result<Boolean> deleteFriend(@RequestBody DeleteFriendDTO dto) {
+        boolean b = userService.deleteFriend(dto);
+        if (b) {
+            return Result.success(true);
+        } else {
+            return Result.error("删除失败");
+        }
     }
 
     @PostMapping(value = "/friend/applyResult")
@@ -205,8 +186,8 @@ public class UserController {
 
     @PostMapping("movie/movies")
     @ApiOperation(value = "获取电影列表")
-    public Result<List<Movie>> getMovies() {
-        List<Movie> movieList = userService.getMovies();
+    public Result<List<MovieVO>> getMovies() {
+        List<MovieVO> movieList = userService.getMovies();
         return Result.success(movieList);
     }
 
@@ -217,19 +198,19 @@ public class UserController {
         return Result.success(rooms);
     }
 
-    @PostMapping("movie/saveroom")
+    @PostMapping("movie/saveRoom")
     @ApiOperation(value = "保存房间")
     public void saveRooms(@RequestBody SaveRoomDTO saveRoomDTO) {
         userService.saveRoom(saveRoomDTO);
     }
 
-    @PostMapping("movie/removeroom")
+    @PostMapping("movie/removeRoom")
     @ApiOperation(value = "销毁房间")
     public void removeRoom(@RequestBody RemoveRoomDTO removeRoomDTO) {
         userService.removeRoom(removeRoomDTO);
     }
 
-    @PostMapping("message/shareroom")
+    @PostMapping("message/shareRoom")
     @ApiOperation(value = "分享消息")
     public Result<Integer> shareMessage(@RequestBody ShareMessageDTO shareDTO) {
         log.info("收到分享消息请求: {}", shareDTO);
@@ -237,23 +218,36 @@ public class UserController {
         return Result.success();
     }
 
-    @PostMapping("post")
+//    @PostMapping("post")
+//    @ApiOperation(value = "发布动态")
+//    public Result<PostsVO> createPost(@RequestBody PostsDTO postsDTO) {
+//        PostsVO postsVO = userService.publishPost(postsDTO);
+//        return Result.success(postsVO);
+//    }
+
+    @PostMapping("/post")
     @ApiOperation(value = "发布动态")
-    public Result<PostsVO> createPost(@RequestBody PostsDTO postsDTO) {
+    public Result<PostsVO> createPost(@ModelAttribute PostDTO postsDTO) {
         PostsVO postsVO = userService.publishPost(postsDTO);
         return Result.success(postsVO);
     }
 
-    @PostMapping("/getpost")
+    @PostMapping("/getPost")
     @ApiOperation("分页获取动态")
     public PageResult<PostsVO> getPost(@RequestBody PostsQueryDTO postsQueryDTO) {
         return userService.getPosts(postsQueryDTO);
     }
 
-    @PostMapping("/getmypost")
+    @PostMapping("/getMyPost")
     @ApiOperation("分页获取自己作品")
     public PageResult<PostsVO> getMyPost(@RequestBody PostsQueryDTO postsQueryDTO) {
         return userService.getMyPosts(postsQueryDTO);
+    }
+
+    @PostMapping("/getFollowerPost")
+    @ApiOperation("分页获取关注用户作品")
+    public PageResult<PostsVO> getFollowerPost(@RequestBody PostsQueryDTO postsQueryDTO) {
+        return userService.getFollowerPost(postsQueryDTO);
     }
 
     @PostMapping("getComment")
@@ -274,4 +268,72 @@ public class UserController {
         StsVO sts = userService.getSts();
         return Result.success(sts);
     }
+
+    @PostMapping("/followUser")
+    @ApiOperation("关注用户")
+    public Result<FollowUserVO> followUser(@RequestBody FollowUserDTO dto) {
+        FollowUserVO followUserVO = userService.followUser(dto);
+        return Result.success(followUserVO);
+    }
+
+    @PostMapping("/unFollowUser")
+    @ApiOperation("取关用户")
+    public Result<UnFollowUserVO> unFollowUser(@RequestBody FollowUserDTO dto) {
+        UnFollowUserVO unFollowUserVO = userService.unFollowUser(dto);
+        return Result.success(unFollowUserVO);
+    }
+
+    @PostMapping("/getMovieCategory")
+    @ApiOperation("获取电影分类")
+    public Result<List<MovieCateVO>> getMovieCategory() {
+        List<MovieCateVO> unFollowUserVO = userService.getMovieCategory();
+        return Result.success(unFollowUserVO);
+    }
+
+    @PostMapping("/saveMovieProgress")
+    @ApiOperation("保存电影进度")
+    public Result<Boolean> saveMovieProgress(@RequestBody SaveProgressDTO dto) {
+        userService.saveMovieProgress(dto);
+        return Result.success();
+    }
+
+    @PostMapping("/getWatchHistory")
+    @ApiOperation("获取观看电影历史")
+    public Result<List<MovieHistoryVO>> getWatchHistory() {
+        List<MovieHistoryVO> watchHistory = userService.getWatchHistory();
+        return Result.success(watchHistory);
+    }
+
+    @PostMapping("/getActorProfile")
+    @ApiOperation("获取演员个人信息")
+    public Result<ActorProfileVO> getActorProfile(@RequestBody ActorProfileDTO dto) {
+        ActorProfileVO actorProfileVO = userService.getActorProfile(dto);
+        if (actorProfileVO == null) {
+            log.info("[x] getActorProfile #312");
+            return Result.error("演员不存在");
+        }
+        return Result.success(actorProfileVO);
+    }
+
+    @PostMapping("/likePost")
+    @ApiOperation("喜欢帖子")
+    public Result<Boolean> likePost(@RequestBody LikePostDTO dto) {
+        Boolean isSuccess = userService.likePostIfNeed(dto);
+        return Result.success(isSuccess);
+    }
+
+    @PostMapping("/getLikePost")
+    @ApiOperation("获取喜欢帖子")
+    public Result<List<PostsVO>> getLikePost() {
+        List<PostsVO> postsVOList = userService.getLikePost();
+        return Result.success(postsVOList);
+    }
+
+    @PostMapping("/getFootprintPost")
+    @ApiOperation("获取足迹帖子")
+    public Result<List<PostsVO>> getFootprintPost() {
+        List<PostsVO> postsVOList = userService.getFootprintPost();
+        return Result.success(postsVOList);
+    }
+
 }

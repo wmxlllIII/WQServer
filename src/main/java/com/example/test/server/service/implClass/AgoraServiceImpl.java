@@ -41,8 +41,8 @@ public class AgoraServiceImpl implements AgoraService {
         return tokenBuilder.buildTokenWithRtm(
                 appId,
                 appCertificate,
-                tokenDTO.getChannelName(),
-                tokenDTO.getUserId(),
+                String.valueOf(tokenDTO.getChannelName()),
+                String.valueOf(tokenDTO.getUserId()),
                 role,
                 tokenDTO.getExpire(),
                 tokenDTO.getExpire()

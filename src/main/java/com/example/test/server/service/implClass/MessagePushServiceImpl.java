@@ -1,11 +1,12 @@
 package com.example.test.server.service.implClass;
 
 import com.example.test.common.enums.EventType;
+import com.example.test.common.enums.FriendStatuType;
 import com.example.test.common.utils.*;
 import com.example.test.pojo.dto.WebSocketDTO;
+import com.example.test.pojo.entity.ConversationRead;
 import com.example.test.pojo.entity.FriendRelationship;
 import com.example.test.pojo.entity.Msg;
-import com.example.test.pojo.entity.OfflineMsg;
 import com.example.test.pojo.entity.User;
 import com.example.test.pojo.vo.MsgVO;
 import com.example.test.server.mapper.UserMapper;
@@ -20,7 +21,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -62,52 +62,79 @@ public class MessagePushServiceImpl implements MessagePushService {
     @Override
     public void checkPendingRequest(long userId) {
         getPendingFriReq(userId);
-        getPendingMsg(userId);
+        pushUnreadMessages(userId);
     }
 
     private void getPendingFriReq(long userId) {
-        List<OfflineMsg> pendingRelas = userMapper.getPendingRelas(userId, EventType.getIntEventType(EventType.EVENT_TYPE_REQUEST_FRIEND));
-        log.info("离线好友申请的数量:{}", pendingRelas.size());
+        // 从 friend_relationships 表中获取待处理的好友请求
+        List<FriendRelationship> pendingRelas = userMapper.getPendingFriendRequests(userId, FriendStatuType.PENDING.getValue());
+        log.info("待处理的好友请求数量: {}", pendingRelas.size());
+
         if (pendingRelas.isEmpty()) {
             log.info("[x] getPendingFriReq #84");
             return;
         }
 
+        // 准备要发送的数据
         List<Map<String, Object>> requestList = new ArrayList<>();
-        for (OfflineMsg relation : pendingRelas) {
+        for (FriendRelationship relation : pendingRelas) {
             long senderId = relation.getSenderId();
             User sender = userMapper.getByUuNumber(senderId);
             User receiver = userMapper.getByUuNumber(userId);
-            FriendRelationship targetRela = userMapper.getTargetRela(userId, senderId);
-            Map<String, Object> request = BuildRelaUtil.buildRequest(sender, receiver, targetRela);
+            Map<String, Object> request = BuildRelaUtil.buildRequest(sender, receiver, relation);
             requestList.add(request);
         }
+
+        // 推送待处理的好友请求
         pushToUser(userId, EventType.EVENT_TYPE_REQUEST_FRIEND, requestList);
-        pendingRelas.forEach(it -> userMapper.deletePendingMsg(it.getId()));
     }
 
-    private void getPendingMsg(long userId) {
-        List<OfflineMsg> pendingMsg = userMapper.getPendingMsg(userId, EventType.getIntEventType(EventType.EVENT_TYPE_MSG));
-        log.info("离线消息的数量:{}", pendingMsg.size());
-        if (pendingMsg.isEmpty()) {
-            log.info("[x] getPendingMsg #99");
+    private void pushUnreadMessages(long userId) {
+
+        List<ConversationRead> conversations = userMapper.getUserConversations(userId);
+
+        if (conversations == null || conversations.isEmpty()) {
+            log.info("[✓] pushUnreadMessages #93");
             return;
         }
 
-        List<MsgVO> msgList = new ArrayList<>();
-        for (OfflineMsg offlineMsg : pendingMsg) {
-            Msg msg = userMapper.getMsg(offlineMsg.getMsgId());
-            MsgVO vo = new MsgVO();
-            vo.setMsgId(msg.getId());
-            vo.setSenderId(msg.getSenderId());
-            vo.setReceiverId(msg.getReceiverId());
-            vo.setContent(msg.getContent());
-            vo.setType(msg.getType());
-            vo.setCreateAt(TimeUtil.dateTimeToSecond(msg.getCreateAt()));
-            msgList.add(vo);
+        for (ConversationRead cr : conversations) {
+
+            List<Msg> unreadList = userMapper.selectUnreadMessages(
+                    cr.getChatType(),
+                    cr.getChatId(),
+                    cr.getLastMsgId() == 0 ? 0 : cr.getLastMsgId()
+            );
+
+            if (unreadList.isEmpty()) {
+                continue;
+            }
+
+            List<MsgVO> voList = new ArrayList<>();
+
+            for (Msg msg : unreadList) {
+                MsgVO vo = new MsgVO();
+                vo.setMsgId(msg.getId());
+                vo.setSenderId(msg.getSenderId());
+                vo.setReceiverId(msg.getChatId());
+                vo.setContent(msg.getContent());
+                vo.setType(msg.getChatType());
+                vo.setCreateAt(TimeUtil.dateTimeToSecond(msg.getCreateAt()));
+                voList.add(vo);
+            }
+
+            // 推送
+            pushToUser(userId, EventType.EVENT_TYPE_MSG, voList);
+
+            // 更新游标为最后一条消息ID
+            int latestMsgId = unreadList.get(unreadList.size() - 1).getId();
+
+            userMapper.updateLastMsgId(
+                    userId,
+                    cr.getChatId(),
+                    latestMsgId
+            );
         }
-        pushToUser(userId, EventType.EVENT_TYPE_MSG, msgList);
-        pendingMsg.forEach(it -> userMapper.deletePendingMsg(it.getId()));
     }
 
 }

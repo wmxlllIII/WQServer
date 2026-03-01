@@ -9,7 +9,7 @@ import lombok.Data;
 public class ShareMessageDTO {
 
     @ApiModelProperty("接收方")
-    private String targetEmail;
+    private int targetId;
 
     @ApiModelProperty("分享链接标题")
     private String linkTitle;

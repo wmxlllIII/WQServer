@@ -11,16 +11,11 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PostImages {
-
+public class FootPrint {
+    private int id;
     private int postId;
-
-
-    private String imageUrl;
-
-
-    private int serialNum;
-
+    private long userId;
+    private int viewCount;
     private LocalDateTime createAt;
-
+    private LocalDateTime updateAt;
 }

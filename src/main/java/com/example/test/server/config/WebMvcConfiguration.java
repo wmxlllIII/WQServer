@@ -33,12 +33,12 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
         log.info("开始注册自定义拦截器...");
         registry.addInterceptor(jwtTokenAdminInterceptor)
                 .excludePathPatterns(
-                        "/auth/sendcode",
+                        "/auth/sendCode",
                         "/auth/register",
                         "/auth/login",
                         "/movies/**",
                         "/movieCover/**",
-                        "/auth/getpost",
+                        "/auth/getPost",
                         "/auth/getComment",
                         "/auth/movie/rooms",
                         "/auth/movie/movies",
@@ -86,8 +86,8 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
         registry.addResourceHandler("/doc.html").addResourceLocations("classpath:/META-INF/resources/");
         registry.addResourceHandler("/webjars/**").addResourceLocations("classpath:/META-INF/resources/webjars/");
         registry.addResourceHandler("/avatar/**").addResourceLocations("file:C:/avatar/");
-        registry.addResourceHandler("/movies/**").addResourceLocations("file:/www/wwwroot/movies/");
-        registry.addResourceHandler("/movieCover/**").addResourceLocations("file:/www/wwwroot/movieCover/");
+        registry.addResourceHandler("/movies/**").addResourceLocations("file:C:/movies/");
+        registry.addResourceHandler("/movieCover/**").addResourceLocations("file:C:/movieCover/");
         registry.addResourceHandler("/postImages/**").addResourceLocations("file:C:/postImages/");
 
     }

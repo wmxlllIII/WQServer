@@ -12,7 +12,9 @@ public class BuildRelaUtil {
 
     public static Map<String, Object> buildRequest(User sender, User receiver, FriendRelationship relation) {
         Map<String, Object> requestInfo = new HashMap<>();
-
+        //todo push不了  // ... 第23行附近
+        //        // 可能是：data.getSomething() 返回了 null
+        //        // 或者：new Object(data.getField()) 但 getField() 返回了 null
         requestInfo.put("sourceId",sender.getUuNumber());
         requestInfo.put("targetId",receiver.getUuNumber());
         requestInfo.put("sourceNickname",sender.getUsername());
@@ -20,7 +22,7 @@ public class BuildRelaUtil {
         requestInfo.put("sourceAvatarUrl", sender.getAvatarUrl());
         requestInfo.put("targetAvatarUrl", receiver.getAvatarUrl());
 
-        requestInfo.put("serverId",relation.getId());
+        requestInfo.put("id",relation.getId());
         requestInfo.put("validMsg",relation.getValidMsg());
         requestInfo.put("status",relation.getStatus());
         requestInfo.put("createAt",TimeUtil.dateTimeToSecond(relation.getCreateAt()));

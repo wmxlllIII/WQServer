@@ -11,16 +11,20 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PostImages {
+public class ConversationRead {
 
-    private int postId;
+    private int id;
 
+    private long userId;
 
-    private String imageUrl;
+    private int chatType;
 
+    private long chatId;
 
-    private int serialNum;
+    private int lastMsgId;
 
     private LocalDateTime createAt;
+
+    private LocalDateTime updateAt;
 
 }

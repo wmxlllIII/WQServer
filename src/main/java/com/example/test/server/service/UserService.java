@@ -5,7 +5,6 @@ import com.example.test.common.result.Result;
 import com.example.test.pojo.dto.*;
 import com.example.test.pojo.entity.Comment;
 import com.example.test.pojo.entity.Movie;
-import com.example.test.pojo.entity.Msg;
 import com.example.test.pojo.entity.User;
 import com.example.test.pojo.vo.*;
 import com.example.test.pojo.dto.SaveRoomDTO;
@@ -19,14 +18,16 @@ public interface UserService {
     User register(RegisterDTO registerDTO);
 
     User login(UserLoginDTO userLoginDTO);
-    User autoLogin(Object obj);
 
+    UserLoginVO autoLogin();
 
-    String updateAvatar(AvatarUploadDTO avatarUploadDTO);
+    UserVO updateAvatar(AvatarUploadDTO avatarUploadDTO);
 
-    User searchUser(SearchUserDTO searchUserDTO);
+    SearchUserVO searchUser(SearchUserDTO searchUserDTO);
 
     String FriendApply(FriendApplyDTO friendApplyDTO);
+
+    boolean deleteFriend(DeleteFriendDTO dto);
 
     HandleFriendRequestVO handleResponse(HandleFriendRequestDTO friendRequestDTO);
 
@@ -36,7 +37,7 @@ public interface UserService {
 
     List<MsgVO> handleMsg(MsgDTO msgDTO);
 
-    List<Movie> getMovies();
+    List<MovieVO> getMovies();
 
     List<RoomVO> getRooms();
 
@@ -44,11 +45,12 @@ public interface UserService {
 
     void removeRoom(RemoveRoomDTO removeRoomDTO);
 
-    void updateUserInfo(UpdateUserInfoDTO updateUserInfoDTO);
+    UserVO updateUserInfo(UpdateUserinfoDTO updateUserInfoDTO);
 
     int saveShareMessage(ShareMessageDTO shareDTO);
 
-    PostsVO publishPost(PostsDTO postsDTO);
+    //    PostsVO publishPost(OssPostsDTO postsDTO);
+    PostsVO publishPost(PostDTO postDTO);
 
     PageResult<PostsVO> getPosts(PostsQueryDTO postsQueryDTO);
 
@@ -58,7 +60,27 @@ public interface UserService {
 
     PageResult<PostsVO> getMyPosts(PostsQueryDTO postsQueryDTO);
 
+    PageResult<PostsVO> getFollowerPost(PostsQueryDTO postsQueryDTO);
+
     StsVO getSts();
 
     PageResult<MsgVO> getMsg(GetMsgDTO getMsgDTO);
+
+    FollowUserVO followUser(FollowUserDTO dto);
+
+    UnFollowUserVO unFollowUser(FollowUserDTO dto);
+
+    List<MovieCateVO> getMovieCategory();
+
+    void saveMovieProgress(SaveProgressDTO dto);
+
+    List<MovieHistoryVO> getWatchHistory();
+
+    ActorProfileVO getActorProfile(ActorProfileDTO dto);
+
+    List<PostsVO> getLikePost();
+
+    List<PostsVO> getFootprintPost();
+
+    Boolean likePostIfNeed(LikePostDTO dto);
 }
